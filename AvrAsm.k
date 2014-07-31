@@ -1,7 +1,6 @@
 require "builtins/mint.k"
 require "bits.k"
 require "unittest.k"
-require "builtins/list.k"
 
 module AVRASM_SYNTAX
 imports UNIT_TEST_SYNTAX
@@ -93,7 +92,6 @@ module AVRASM
     imports AVRASM_SYNTAX
     imports BITS
     imports UNIT_TEST
-    imports LIST
 
     syntax State ::= "MAPPING" | "RUNNING" | "FINISHED"| "ERROR"
 
@@ -233,7 +231,7 @@ module AVRASM
         <rv> _ => addrv(bit(RdV, 7), bit(RrV, 7), bit(addMInt(RdV, RrV), 7)) </rv>
         <rn> _ => bit(addMInt(RdV, RrV), 7) </rn>
         <rz> _ => eqMInt(addMInt(RdV, RrV), toByte(0)) </rz>
-        <rc> _ => miMInt(uaddMInt(RdV, RrV)) </rc>
+        <rc> _ => overflowMInt(uaddMInt(RdV, RrV)) </rc>
         <clockcycle> C => C +Int 1 </clockcycle>
 
     // Add flags
@@ -247,7 +245,7 @@ module AVRASM
         (notBool R7b) orBool
         (notBool Rd7b) andBool
         (notBool Rr7b) andBool
-        R7b
+        R7b [macro]
 
     // Rd3 • Rr3 + Rr3 • R3 ¯ + R3 ¯ • Rd3
     rule addrh(Rd3b, Rr3b, R3b) => 
@@ -256,7 +254,7 @@ module AVRASM
         Rr3b andBool
         (notBool R3b) orBool
         (notBool R3b) andBool
-        Rd3b
+        Rd3b [macro]
 
     //SUB - subtract registers and place result in the first    
     rule <k> sub Rd, Rr => . </k>
