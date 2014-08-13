@@ -10,4 +10,4 @@ cat $1 > ${tmp}
 
 python3 preprocessor.py ${tmp} `dirname $1` 
 
-kast -d ${dir}/AvrAsm-kompiled ${tmp}
+kast ${tmp}

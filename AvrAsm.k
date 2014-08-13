@@ -1,4 +1,3 @@
-require "builtins/mint.k"
 require "bits.k"
 require "unittest.k"
 
@@ -137,10 +136,10 @@ module AVRASM
     
     // Mapping stmts
     rule <init> S:Stmt P:Pgm => P </init>
-        <stmts> . => ListItem([0, S]) </stmts>
+        <stmts> .List => ListItem([0, S]) </stmts>
 
     rule <init> S:Stmt => . </init>
-        <stmts> . => ListItem([0, S]) </stmts>
+        <stmts> .List => ListItem([0, S]) </stmts>
 
     rule <init> S:Stmt P:Pgm => P </init>
         <stmts>... ListItem([I,T]) => ListItem([I,T]) ListItem([I +Int 1, S]) </stmts>
@@ -193,7 +192,7 @@ module AVRASM
     rule <pins>... _ |-> (I:Int => toByte(uvalueMInt(toByte(I)))) ...</pins> 
 
     // Get MInt from resolution expression
-    rule <registers>... _ |-> (Res:MyList => miMInt(Res)) ...</registers>
+    rule <registers>... _ |-> (Res:List => miMInt(Res)) ...</registers>
 
     // Arithmetic
     //rule - I:Int => the unary minus is behaving correctly as is (by k framework Int)
