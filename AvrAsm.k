@@ -192,7 +192,7 @@ module AVRASM
     rule <pins>... _ |-> (I:Int => toByte(uvalueMInt(toByte(I)))) ...</pins> 
 
     // Get MInt from resolution expression
-    rule <registers>... _ |-> (Res:List => miMInt(Res)) ...</registers>
+    rule <registers>... _ |-> (Res:MyList => miMInt(Res)) ...</registers>
 
     // Arithmetic
     //rule - I:Int => the unary minus is behaving correctly as is (by k framework Int)

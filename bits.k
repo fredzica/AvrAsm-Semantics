@@ -1,8 +1,11 @@
+require "builtins/mint.k"
+
 module BITS
+imports MINT
 
     // ToByte
     syntax MInt ::= toByte(Int) [function]
-    rule toByte(I:Int) => $mi(8, I) [macro]
+    rule toByte(I:Int) => mi(8, I) [macro]
     
     // Bool from MInt
     syntax Bool ::= bit(MInt, Int) [function]
