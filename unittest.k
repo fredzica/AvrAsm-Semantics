@@ -5,6 +5,7 @@ module UNIT_TEST_SYNTAX
     syntax UnitTest ::= "vreg" Reg "," Exp
                     | "vpin" IOReg "," Exp
                     | "vsreg" Exp
+                    | "vclk" Exp
                     | "vi" Bool
                     | "vt" Bool
                     | "vh" Bool
@@ -59,6 +60,9 @@ imports MINT
         <rt> Vt </rt>
         <ri> Vi </ri>
         when (Boolasbin(Vc, 0) +Int Boolasbin(Vz, 1) +Int Boolasbin(Vn, 2) +Int Boolasbin(Vv, 3) +Int Boolasbin(Vs, 4) +Int Boolasbin(Vh, 5) +Int Boolasbin(Vt, 6) +Int Boolasbin(Vi, 7)) ==Int B
+
+    rule <k> vclk Clk => . </k>
+        <clockcycle> Clk </clockcycle>
 
     syntax Int ::= Boolasbin(Bool, Int) [function]
     rule Boolasbin(false, I) => 0

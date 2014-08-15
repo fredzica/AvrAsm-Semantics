@@ -180,8 +180,8 @@ module AVRASM
     rule <k> . </k> 
         <pc> PC </pc>
         <stmts>... ListItem([I, _]) </stmts>
-        <registers>... _ |-> (MI:MInt => toByte(uvalueMInt(MI)))  ...</registers>
-        <state> RUNNING => FINISHED </state> when PC ==Int (I +Int 1)
+        <state> RUNNING => FINISHED </state>
+            when PC ==Int (I +Int 1)
 
     /////////// Registers content assurance //////////
 

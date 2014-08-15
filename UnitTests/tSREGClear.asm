@@ -15,3 +15,5 @@ cls
 clv
 clt
 clh
+
+;@vsreg 0

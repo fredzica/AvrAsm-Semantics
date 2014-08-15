@@ -6,3 +6,5 @@ ses
 sev
 set
 seh
+
+;@vsreg 0xFF
