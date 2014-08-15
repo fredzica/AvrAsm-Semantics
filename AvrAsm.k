@@ -91,6 +91,7 @@ module AVRASM
     imports AVRASM_SYNTAX
     imports BITS
     imports UNIT_TEST
+    imports MINT
 
     syntax State ::= "MAPPING" | "RUNNING" | "FINISHED"| "ERROR"
 
@@ -182,10 +183,7 @@ module AVRASM
         <registers>... _ |-> (MI:MInt => toByte(uvalueMInt(MI)))  ...</registers>
         <state> RUNNING => FINISHED </state> when PC ==Int (I +Int 1)
 
-    /////////// Expression evaluation //////////
-
-    // KResult 
-    syntax KResult ::= Int
+    /////////// Registers content assurance //////////
 
     // Int from expression will be turned into MInt
     rule <registers>... _ |-> (I:Int => toByte(uvalueMInt(toByte(I)))) ...</registers>
@@ -193,6 +191,15 @@ module AVRASM
 
     // Get MInt from resolution expression
     rule <registers>... _ |-> (Res:MyList => miMInt(Res)) ...</registers>
+
+    // Ensures 8-bits numbers in registers at any point in the execution
+    rule <registers>... _ |-> (mi(N, I) => toByte(uvalueMInt(mi(N, I)))) ...</registers>
+        when I >Int 255
+
+    /////////// Expression evaluation //////////
+
+    // KResult 
+    syntax KResult ::= Int
 
     // Arithmetic
     //rule - I:Int => the unary minus is behaving correctly as is (by k framework Int)

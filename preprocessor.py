@@ -29,7 +29,10 @@ def handle_includes(content, abs_path):
 
 
 def remove_comments(txt):
-    new_txt = re.sub("(^;.*$\n)", "", txt, flags = re.MULTILINE)
+    #unit tests
+    new_txt = re.sub("(^;@v)", "v", txt, flags = re.MULTILINE)
+
+    new_txt = re.sub("(^;.*$\n)", "", new_txt, flags = re.MULTILINE)
     new_txt = re.sub("(\/\*.*\*\/)", "", new_txt, flags = re.MULTILINE)
     new_txt = re.sub("(;.*)", "", new_txt)
     new_txt = re.sub("(\/\/.*)", "", new_txt)
