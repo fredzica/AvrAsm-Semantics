@@ -4,5 +4,6 @@ Much of the microcontrollers' behaviour is being defined too, as it's necessary 
 
 This is an work in progress started not long ago. Because of this not many features of the language are defined yet.
 
+---- Currently working on release v3.4 of K Framework ----
 
-Frederico Zica - Developer
+Frederico Zica
