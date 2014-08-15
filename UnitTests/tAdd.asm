@@ -22,6 +22,12 @@ add R16, R17
 ;@vreg R16, 0
 ;@vsreg 0x02
 
+ldi R16, 255
+ldi R17, 1
+add R16, R17
+;@vreg R16, 0
+;@vsreg 0x23
+
 ldi R16, 120
 ldi R17, 255
 add R16, R17
