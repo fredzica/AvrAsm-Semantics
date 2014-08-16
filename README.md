@@ -4,6 +4,6 @@ Much of the microcontrollers' behaviour is being defined too, as it's necessary 
 
 This is an work in progress started not long ago. Because of this not many features of the language are defined yet.
 
----- Currently working on release v3.4 of K Framework ----
+---- Currently working on release v3.4 of K Framework with mint-custom.k file instead of original mint.k file. Please replace it on the builtins folder----
 
 Frederico Zica
