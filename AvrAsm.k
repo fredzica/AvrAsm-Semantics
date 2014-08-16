@@ -1,8 +1,8 @@
 require "bits.k"
 require "unittest.k"
 
-module AVRASM_SYNTAX
-    imports UNIT_TEST_SYNTAX
+module AVRASM-SYNTAX
+    imports UNIT_TEST-SYNTAX
 
     syntax Stmt ::= "add" Reg "," Reg
                     | "mov" Reg "," Reg
@@ -88,7 +88,7 @@ endmodule
 
 //////////////////////////// Configuration //////////////////////////////
 module AVRASM
-    imports AVRASM_SYNTAX
+    imports AVRASM-SYNTAX
     imports BITS
     imports UNIT_TEST
     imports MINT

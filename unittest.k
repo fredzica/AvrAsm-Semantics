@@ -1,4 +1,4 @@
-module UNIT_TEST_SYNTAX
+module UNIT_TEST-SYNTAX
     syntax Stmt ::= UnitTest
 
     syntax UnitTest ::= "vreg" Reg "," Exp
@@ -16,7 +16,7 @@ module UNIT_TEST_SYNTAX
 endmodule
 
 module UNIT_TEST
-imports UNIT_TEST_SYNTAX
+imports UNIT_TEST-SYNTAX
 imports MINT
 
     rule <k> vreg R:Reg, V:Int => . </k>
