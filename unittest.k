@@ -1,5 +1,4 @@
 module UNIT_TEST_SYNTAX
-    //TODO: create configuration to enable or disable this part
     syntax Stmt ::= UnitTest
 
     syntax UnitTest ::= "vreg" Reg "," Exp
@@ -20,52 +19,52 @@ module UNIT_TEST
 imports UNIT_TEST_SYNTAX
 imports MINT
 
-    rule <k> vreg Reg, V => . </k>
-        <registers>... Reg |-> mi(8, V) ...</registers>
+    rule <k> vreg R:Reg, V:Int => . </k>
+        <registers>... R |-> $mi(8, V) ...</registers>
     
-    rule <k> vpin Pin, V => . </k>
-        <pins>... Pin |-> mi(8, V) ...</pins>
+    rule <k> vpin P:IOReg, V:Int => . </k>
+        <pins>... P |-> $mi(8, V) ...</pins>
     
-    rule <k> vi V => . </k>
+    rule <k> vi V:Bool => . </k>
         <ri> V </ri>
 
-    rule <k> vt V => . </k>
+    rule <k> vt V:Bool => . </k>
         <rt> V </rt>
 
-    rule <k> vh V => . </k>
+    rule <k> vh V:Bool => . </k>
         <rh> V </rh>
 
-    rule <k> vs V => . </k>
+    rule <k> vs V:Bool => . </k>
         <rs> V </rs>
 
-    rule <k> vv V => . </k>
+    rule <k> vv V:Bool => . </k>
         <rv> V </rv>
 
-    rule <k> vn V => . </k>
+    rule <k> vn V:Bool => . </k>
         <rn> V </rn>
 
-    rule <k> vz V => . </k>
+    rule <k> vz V:Bool => . </k>
         <rz> V </rz>
 
-    rule <k> vc V => . </k>
+    rule <k> vc V:Bool => . </k>
         <rc> V </rc>
 
-    rule <k> vsreg B => . </k>
-        <rc> Vc </rc>
-        <rz> Vz </rz>
-        <rn> Vn </rn>
-        <rv> Vv </rv>
-        <rs> Vs </rs>
-        <rh> Vh </rh>
-        <rt> Vt </rt>
-        <ri> Vi </ri>
+    rule <k> vsreg B:Int => . </k>
+        <rc> Vc:Bool </rc>
+        <rz> Vz:Bool </rz>
+        <rn> Vn:Bool </rn>
+        <rv> Vv:Bool </rv>
+        <rs> Vs:Bool </rs>
+        <rh> Vh:Bool </rh>
+        <rt> Vt:Bool </rt>
+        <ri> Vi:Bool </ri>
         when (Boolasbin(Vc, 0) +Int Boolasbin(Vz, 1) +Int Boolasbin(Vn, 2) +Int Boolasbin(Vv, 3) +Int Boolasbin(Vs, 4) +Int Boolasbin(Vh, 5) +Int Boolasbin(Vt, 6) +Int Boolasbin(Vi, 7)) ==Int B
 
-    rule <k> vclk Clk => . </k>
+    rule <k> vclk Clk:Int => . </k>
         <clockcycle> Clk </clockcycle>
 
     syntax Int ::= Boolasbin(Bool, Int) [function]
-    rule Boolasbin(false, I) => 0
-    rule Boolasbin(true, I) => 2 ^Int I
+    rule Boolasbin(false, _) => 0
+    rule Boolasbin(true, I:Int) => 2 ^Int I
 
 endmodule
