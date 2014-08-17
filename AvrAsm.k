@@ -46,8 +46,10 @@ module AVRASM-SYNTAX
                     | "cp" Reg "," Reg
                     | "sleep"
                     | "nop"
+                    | "wdr"
                     | "break"
                     | Label ":"
+
     syntax Exp ::= Int
                    | "-" Exp [strict]
                    > Exp "*" Exp [left, strict]
@@ -554,6 +556,10 @@ module AVRASM
 
     //NOP - no operation
     rule <k> nop => . </k>
+        <clockcycle> C:Int => C +Int 1 </clockcycle>
+    
+    //WDR - watchdog reset
+    rule <k> wdr => . </k>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
     
     //BREAK - for on-chip debug
