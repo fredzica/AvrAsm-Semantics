@@ -7,3 +7,4 @@ clr R18
 ;@vreg R16, 0
 ;@vreg R17, 0
 ;@vreg R18, 0
+;@vsreg 2
