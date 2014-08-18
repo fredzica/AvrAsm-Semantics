@@ -194,7 +194,7 @@ module AVRASM
 
     // Ensures 8-bits numbers in registers at any point in the execution
     rule <registers>... _ |-> ($mi(N:Int, I:Int) => toByte(uvalueMInt($mi(N, I)))) ...</registers>
-        when I >Int 255
+        when I >Int 255 orBool I <Int 0
 
     /////////// Expression evaluation //////////
 
