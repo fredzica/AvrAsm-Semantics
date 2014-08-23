@@ -17,8 +17,7 @@ add R16, R17
 ;@vsreg 0x39
 
 ldi R16, 0
-ldi R17, 0
-add R16, R17
+add R16, R16
 ;@vreg R16, 0
 ;@vsreg 0x02
 

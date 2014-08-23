@@ -10,31 +10,28 @@ module AVRASM-SYNTAX
                     | "eor"
                     | "cp"
 
-    syntax RStmt ::= "inc"
-                    | "dec" 
-                    | "clr" 
-                    | "ser" 
-                    | "ror" 
-                    | "asr" 
-                    | "swap" 
-
-    syntax REStmt ::= "ldi"
-                    | "subi" 
-                    | "bst" 
-                    | "bld" 
-
-    syntax IEStmt ::= "sbi"
-                    | "cbi"
-
-    syntax EStmt ::= "bset"
-                    | "bclr"
-
-    syntax IRStmt ::= "out"
-
-    syntax RIStmt ::= "in"
-
-
-    syntax ZStmt ::= "sec"
+    syntax Stmt ::= RRStmt Reg "," Reg
+                    | "in" Reg "," IOReg
+                    | "out" IOReg "," Reg
+                    | "ldi" Reg "," Exp [strict(2)]
+                    | "subi" Reg "," Exp [strict(2)]
+                    | "bst" Reg "," Exp [strict(2)]
+                    | "bld" Reg "," Exp [strict(2)]
+                    | "sbi" IOReg "," Exp [strict(2)]
+                    | "cbi" IOReg "," Exp [strict(2)]
+                    | "inc" Reg
+                    | "dec" Reg 
+                    | "clr" Reg 
+                    | "ser" Reg 
+                    | "ror" Reg 
+                    | "asr" Reg 
+                    | "swap" Reg 
+                    | "bset" Exp [strict(1)]
+                    | "bclr" Exp [strict(1)]
+                    | "jmp" Label
+                    | "breq" Label
+                    | "brne" Label
+                    | "sec"
                     | "clc"
                     | "sen"
                     | "cln"
@@ -54,18 +51,6 @@ module AVRASM-SYNTAX
                     | "nop"
                     | "wdr"
                     | "break"
-
-    syntax Stmt ::= RRStmt Reg "," Reg
-                    | RIStmt Reg "," IOReg
-                    | IRStmt IOReg "," Reg
-                    | REStmt Reg "," Exp [strict(3)]
-                    | IEStmt IOReg "," Exp [strict(3)]
-                    | RStmt Reg
-                    | EStmt Exp [strict(2)]
-                    | "jmp" Label
-                    | "breq"Label
-                    | "brne" Label
-                    | ZStmt
                     | Label ":"
 
     syntax Exp ::= Int
@@ -202,14 +187,11 @@ module AVRASM
     rule <regr> R:Reg => Rv </regr>
         <registers>... R |-> Rv:MInt ...</registers>
 
-    // Puts registers into the cells for its value to be retrieved
+    // Puts registers into the cells for their values to be retrieved
     rule <k> _ Rd:Reg, Rr:Reg </k> 
         <regd> . => Rd </regd>
         <regr> . => Rr </regr>
         
-    rule <k> _ Rd:Reg </k> 
-        <regd> . => Rd </regd>
-
     // Loop labels
     rule <k> _:Label : => . </k> [structural]
 
@@ -236,7 +218,7 @@ module AVRASM
     /////////// Expression evaluation //////////
 
     // KResult FIXME:why Reg and IOReg have to be here, why it's trying to resolve them? 
-    syntax KResult ::= Int | Reg | IOReg
+    syntax KResult ::= Int
 
     // Arithmetic
     //rule - I:Int => the unary minus is behaving correctly as is (by k framework Int)
@@ -267,8 +249,10 @@ module AVRASM
     /////// Arithmetic and logic instructions ///////////
 
     //ADD - add registers and place result in the first    
-    rule <k> add Rd:Reg, Rr:Reg => . </k>
-        <registers>... (Rr |-> RrV:MInt) (Rd |-> (RdV:MInt => addMInt(RdV, RrV)))  ...</registers>
+    rule <k> add Rd:Reg, _:Reg => . </k>
+        <regd> RdV:MInt </regd>
+        <regr> RrV:MInt </regr>
+        <registers>... (Rd |-> (_ => addMInt(RdV, RrV)))  ...</registers>
         <rh> _ => addrh(RdV, RrV) </rh> 
         <rs> _ => addrs(RdV, RrV) </rs>   
         <rv> _ => addrv(RdV, RrV) </rv>
@@ -320,8 +304,10 @@ module AVRASM
         Rd3b [macro]
 
     //SUB - subtract registers and place result in the first    
-    rule <k> sub Rd:Reg, Rr:Reg => . </k>
-        <registers>... Rd |-> (RdV:MInt => subMInt(RdV, RrV)) (Rr |-> RrV:MInt) ...</registers>
+    rule <k> sub Rd:Reg, _:Reg => . </k>
+        <regd> RdV:MInt </regd>
+        <regr> RrV:MInt </regr>
+        <registers>... Rd |-> (_ => subMInt(RdV, RrV)) ...</registers>
         <rh> _ => subrh(RdV, RrV) </rh> 
         <rs> _ => subrs(RdV, RrV) </rs>
         <rv> _ => subrv(RdV, RrV) </rv> 
@@ -416,7 +402,7 @@ module AVRASM
         bit(subMInt(RdV, toByte(1)), 7) [macro]
 
     //EOR - exclusive or
-    rule <k> eor:RRStmt Rd:Reg, _:Reg => . </k>
+    rule <k> eor Rd:Reg, _:Reg => . </k>
         <regd> RdV:MInt </regd>
         <regr> RrV:MInt </regr>
         <registers>... Rd |-> (_ => xorMInt(RdV, RrV)) ...</registers>
@@ -437,22 +423,16 @@ module AVRASM
     rule clr Rd:Reg => eor Rd, Rd [macro]
 
     //SER - set register -- no flags need to be set here
-    rule ser Rd:Reg => ldi Rd, 255 [structural]
+    rule ser Rd:Reg => ldi Rd, 255 [macro]
     
     /////////////// Branch Instructions /////////////
 
     //CP - compare
-    rule <k> cp Rd:Reg, Rr:Reg => . </k>
-        <registers>... (Rd |-> Rdv:MInt) (Rr |-> Rrv:MInt) ...</registers>
-        <rz> _ => true </rz> 
+    rule <k> cp _:Reg, _:Reg => . </k>
+        <regd> RdV:MInt </regd>
+        <regr> RrV:MInt </regr>
+        <rz> _ => eqMInt(RdV, RrV) </rz> 
         <clockcycle> C:Int => C +Int 1 </clockcycle> 
-        when eqMInt(Rdv, Rrv)
-
-    rule <k> cp Rd:Reg, Rr:Reg => . </k>
-        <registers>... (Rd |-> Rdv:MInt) (Rr |-> Rrv:MInt)  ...</registers>
-        <rz> _ => false </rz> 
-        <clockcycle> C:Int => C +Int 1 </clockcycle> 
-        when neMInt(Rdv, Rrv)
 
     //TODO: implement for cp
         //<i> 0 </i>
@@ -494,8 +474,9 @@ module AVRASM
     /////////////// Data Transfer //////////////////
 
     //MOV - copy register
-    rule <k> mov Rd:Reg, Rr:Reg => . </k>
-        <registers>... Rd |-> (_ => RrV) (Rr |-> RrV:MInt) ...</registers>
+    rule <k> mov Rd:Reg, _:Reg => . </k>
+        <regr> RrV:MInt </regr>
+        <registers>... Rd |-> (_ => RrV) ...</registers>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //LDI - load immediate
