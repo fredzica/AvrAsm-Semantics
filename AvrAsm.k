@@ -4,26 +4,37 @@ require "unittest.k"
 module AVRASM-SYNTAX
     imports UNIT_TEST-SYNTAX
 
-    syntax Stmt ::= "add" Reg "," Reg
-                    | "mov" Reg "," Reg
-                    | "ldi" Reg "," Exp [strict(2)]
-                    | "sub" Reg "," Reg
-                    | "subi" Reg "," Exp [strict(2)]
-                    | "inc" Reg
-                    | "dec" Reg
-                    | "eor" Reg "," Reg
-                    | "clr" Reg
-                    | "ser" Reg
-                    | "sbi" LowIOReg "," Exp
-                    | "cbi" LowIOReg "," Exp
-                    | "ror" Reg
-                    | "asr" Reg
-                    | "swap" Reg
-                    | "bset" Int
-                    | "bclr" Int
-                    | "bst" Reg "," Exp
-                    | "bld" Reg "," Exp
-                    | "sec"
+    syntax RRStmt ::= "add"
+                    | "mov"
+                    | "sub"
+                    | "eor"
+                    | "cp"
+
+    syntax RStmt ::= "inc"
+                    | "dec" 
+                    | "clr" 
+                    | "ser" 
+                    | "ror" 
+                    | "asr" 
+                    | "swap" 
+
+    syntax REStmt ::= "ldi"
+                    | "subi" 
+                    | "bst" 
+                    | "bld" 
+
+    syntax IEStmt ::= "sbi"
+                    | "cbi"
+
+    syntax EStmt ::= "bset"
+                    | "bclr"
+
+    syntax IRStmt ::= "out"
+
+    syntax RIStmt ::= "in"
+
+
+    syntax ZStmt ::= "sec"
                     | "clc"
                     | "sen"
                     | "cln"
@@ -39,16 +50,22 @@ module AVRASM-SYNTAX
                     | "clt"
                     | "seh"
                     | "clh"
-                    | "in" Reg "," IOReg
-                    | "out" IOReg "," Reg
-                    | "jmp" Label
-                    | "breq" Label
-                    | "brne" Label
-                    | "cp" Reg "," Reg
                     | "sleep"
                     | "nop"
                     | "wdr"
                     | "break"
+
+    syntax Stmt ::= RRStmt Reg "," Reg
+                    | RIStmt Reg "," IOReg
+                    | IRStmt IOReg "," Reg
+                    | REStmt Reg "," Exp [strict(3)]
+                    | IEStmt IOReg "," Exp [strict(3)]
+                    | RStmt Reg
+                    | EStmt Exp [strict(2)]
+                    | "jmp" Label
+                    | "breq"Label
+                    | "brne" Label
+                    | ZStmt
                     | Label ":"
 
     syntax Exp ::= Int
@@ -109,11 +126,14 @@ module AVRASM
             <labels> .Map </labels>
             <clockcycle> 0 </clockcycle>
 
+            <regd> . </regd>
+            <regr> . </regr>
+            
             <registers> 
-                R0 |-> toByte(0) R1 |-> toByte(0) R2 |-> toByte(0) R3 |-> toByte(0) R4 |-> toByte(0) R5 |-> toByte(0) R6 |-> toByte(0) R7 |-> toByte(0) R8 |-> toByte(0) R9 |-> toByte(0) R10 |-> toByte(0) R11 |-> toByte(0) R12 |-> toByte(0) R13 |-> toByte(0) R14 |-> toByte(0) R15 |-> toByte(0) R16 |-> toByte(0) R17 |-> toByte(0) R18 |-> toByte(0) R19 |-> toByte(0) R20 |-> toByte(0) R21 |-> toByte(0) R22 |-> toByte(0) R23 |-> toByte(0) R24 |-> toByte(0) R25 |-> toByte(0) R26 |-> toByte(0) R27 |-> toByte(0) R28 |-> toByte(0) R29 |-> toByte(0) R30 |-> toByte(0) R31 |-> toByte(0)
+                R0 |-> $mi(8, 0) R1 |-> $mi(8, 0) R2 |-> $mi(8, 0) R3 |-> $mi(8, 0) R4 |-> $mi(8, 0) R5 |-> $mi(8, 0) R6 |-> $mi(8, 0) R7 |-> $mi(8, 0) R8 |-> $mi(8, 0) R9 |-> $mi(8, 0) R10 |-> $mi(8, 0) R11 |-> $mi(8, 0) R12 |-> $mi(8, 0) R13 |-> $mi(8, 0) R14 |-> $mi(8, 0) R15 |-> $mi(8, 0) R16 |-> $mi(8, 0) R17 |-> $mi(8, 0) R18 |-> $mi(8, 0) R19 |-> $mi(8, 0) R20 |-> $mi(8, 0) R21 |-> $mi(8, 0) R22 |-> $mi(8, 0) R23 |-> $mi(8, 0) R24 |-> $mi(8, 0) R25 |-> $mi(8, 0) R26 |-> $mi(8, 0) R27 |-> $mi(8, 0) R28 |-> $mi(8, 0) R29 |-> $mi(8, 0) R30 |-> $mi(8, 0) R31 |-> $mi(8, 0) 
             </registers>
             <pins>
-                PORTA |-> toByte(0) PORTB |-> toByte(0) PORTC |-> toByte(0) PORTD |-> toByte(0) DDRA |-> toByte(0) DDRB |-> toByte(0) DDRC |-> toByte(0) DDRD |-> toByte(0) 
+                PORTA |-> $mi(8, 0) PORTB |-> $mi(8, 0) PORTC |-> $mi(8, 0) PORTD |-> $mi(8, 0) DDRA |-> $mi(8, 0) DDRB |-> $mi(8, 0) DDRC |-> $mi(8, 0) DDRD |-> $mi(8, 0) 
             </pins>
             <sreg>
                 <ri> false </ri> // Global Interrupt Enable/Disable Flag
@@ -171,8 +191,24 @@ module AVRASM
     // Execution
     rule <state> RUNNING </state>
         <k> . => S </k>
+        <regd> _ => . </regd>
+        <regr> _ => . </regr>
         <pc> PC => PC +Int 1 </pc>
-        <stmts>... ListItem([PC:Int, S:K]) ...</stmts>
+        <stmts>... ListItem([PC:Int, S:Stmt]) ...</stmts>
+    
+    // Retrieve registers values from the map
+    rule <regd> R:Reg => Rv </regd>
+        <registers>... R |-> Rv:MInt ...</registers>
+    rule <regr> R:Reg => Rv </regr>
+        <registers>... R |-> Rv:MInt ...</registers>
+
+    // Puts registers into the cells for its value to be retrieved
+    rule <k> _ Rd:Reg, Rr:Reg </k> 
+        <regd> . => Rd </regd>
+        <regr> . => Rr </regr>
+        
+    rule <k> _ Rd:Reg </k> 
+        <regd> . => Rd </regd>
 
     // Loop labels
     rule <k> _:Label : => . </k> [structural]
@@ -199,8 +235,8 @@ module AVRASM
 
     /////////// Expression evaluation //////////
 
-    // KResult 
-    syntax KResult ::= Int
+    // KResult FIXME:why Reg and IOReg have to be here, why it's trying to resolve them? 
+    syntax KResult ::= Int | Reg | IOReg
 
     // Arithmetic
     //rule - I:Int => the unary minus is behaving correctly as is (by k framework Int)
@@ -379,15 +415,17 @@ module AVRASM
     rule decrn(RdV:MInt) =>
         bit(subMInt(RdV, toByte(1)), 7) [macro]
 
-    //EOR - exclusive or //FIXME: not working when Rd and Rr are the same!
-    rule <k> eor Rd:Reg, Rr:Reg => . </k>
-        <registers>... Rd |-> (RdV => xorMInt(RdV, RrV)) (Rr |-> RrV) ...</registers>
+    //EOR - exclusive or
+    rule <k> eor:RRStmt Rd:Reg, _:Reg => . </k>
+        <regd> RdV:MInt </regd>
+        <regr> RrV:MInt </regr>
+        <registers>... Rd |-> (_ => xorMInt(RdV, RrV)) ...</registers>
         <rs> _ => eorrn(RdV, RrV) xorBool false </rs> // N ⊕ V
         <rv> _ => false </rv>
         <rn> _ => eorrn(RdV, RrV) </rn>
         <rz> _ => zeroMInt(xorMInt(RdV, RrV)) </rz>
         <clockcycle> C:Int => C +Int 1 </clockcycle> 
-        
+   
     // Eor flags
     syntax Bool ::= eorrn(MInt, MInt) [function]
     

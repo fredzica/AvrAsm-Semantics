@@ -1,3 +1,5 @@
+eor R16, R17
+
 ldi R16, 50
 ldi R17, 255
 eor R16, R17

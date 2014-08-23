@@ -1,6 +1,6 @@
 ldi R16, -128
-ldi R17, -127
-add R16, R17
+ldi R19, -127
+add R16, R19
 ;@vreg R16, 1
 ;@vsreg 0x19
 
