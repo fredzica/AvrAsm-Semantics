@@ -181,17 +181,17 @@ module AVRASM
         <pc> PC => PC +Int 1 </pc>
         <stmts>... ListItem([PC:Int, S:Stmt]) ...</stmts>
     
+    // Puts registers into the cells for their values to be retrieved
+    rule <k> _ Rd:Reg, Rr:Reg </k> 
+        <regd> . => Rd </regd>
+        <regr> . => Rr </regr>
+        
     // Retrieve registers values from the map
     rule <regd> R:Reg => Rv </regd>
         <registers>... R |-> Rv:MInt ...</registers>
     rule <regr> R:Reg => Rv </regr>
         <registers>... R |-> Rv:MInt ...</registers>
 
-    // Puts registers into the cells for their values to be retrieved
-    rule <k> _ Rd:Reg, Rr:Reg </k> 
-        <regd> . => Rd </regd>
-        <regr> . => Rr </regr>
-        
     // Loop labels
     rule <k> _:Label : => . </k> [structural]
 
@@ -217,7 +217,7 @@ module AVRASM
 
     /////////// Expression evaluation //////////
 
-    // KResult FIXME:why Reg and IOReg have to be here, why it's trying to resolve them? 
+    // KResult 
     syntax KResult ::= Int
 
     // Arithmetic
@@ -312,7 +312,7 @@ module AVRASM
         <rs> _ => subrs(RdV, RrV) </rs>
         <rv> _ => subrv(RdV, RrV) </rv> 
         <rn> _ => subrn(RdV, RrV) </rn>
-        <rz> _ => zeroMInt(subMInt(RdV, RrV)) </rz> // if result is zero
+        <rz> _ => eqMInt(RdV, RrV) </rz> // if result is zero
         <rc> _ => overflowMInt(usubMInt(RdV, RrV)) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
@@ -431,17 +431,13 @@ module AVRASM
     rule <k> cp _:Reg, _:Reg => . </k>
         <regd> RdV:MInt </regd>
         <regr> RrV:MInt </regr>
-        <rz> _ => eqMInt(RdV, RrV) </rz> 
+        <rh> _ => subrh(RdV, RrV) </rh> 
+        <rs> _ => subrs(RdV, RrV) </rs>
+        <rv> _ => subrv(RdV, RrV) </rv> 
+        <rn> _ => subrn(RdV, RrV) </rn>
+        <rz> _ => zeroMInt(subMInt(RdV, RrV)) </rz> // if result is zero
+        <rc> _ => ultMInt(RdV, RrV) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle> 
-
-    //TODO: implement for cp
-        //<i> 0 </i>
-        //<t> 0 </t>
-        //<h> 0 </h>
-        //<s> 0 </s>
-        //<v> 0 </v>
-        //<n> 0 </n>
-        //<c> 0 </c>
 
     //JMP - jump to label
     rule <k> jmp La:Label => . </k>

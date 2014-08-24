@@ -33,3 +33,8 @@ subi R16, -23
 ;@vreg R16, 0x9B
 ;@vsreg 0x35
 
+ldi R16, 124
+subi R16, -256
+;@vreg R16, 0x7C
+;@vsreg 0x00
+
