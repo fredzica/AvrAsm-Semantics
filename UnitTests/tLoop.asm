@@ -11,7 +11,7 @@ loop:
 ;@vreg R16, 0xFF
 ;@vreg R17, 0xFF
 ;@vreg R18, 0x01
-;@vsreg 0x02 ;verify the last two tests after CP mnemonic is completely implemented
-;@vclk 1021 
+;@vsreg 0x02 
+;@vclk 1023 
 
    
