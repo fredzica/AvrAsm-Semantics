@@ -1,3 +1,5 @@
+// Copyright (c) 2014 Frederico Zica. All Rights Reserved.
+
 require "builtins/mint.k"
 
 module BITS
