@@ -21,37 +21,37 @@ module UNIT_TEST
 imports UNIT_TEST-SYNTAX
 imports MINT
 
-    rule <k> vreg R:Reg, V:Int => . </k>
+    rule <k> vreg R:Reg, V:Int => .K </k>
         <registers>... R |-> $mi(8, V) ...</registers>
     
-    rule <k> vpin P:IOReg, V:Int => . </k>
+    rule <k> vpin P:IOReg, V:Int => .K </k>
         <pins>... P |-> $mi(8, V) ...</pins>
     
-    rule <k> vi V:Bool => . </k>
+    rule <k> vi V:Bool => .K </k>
         <ri> V </ri>
 
-    rule <k> vt V:Bool => . </k>
+    rule <k> vt V:Bool => .K </k>
         <rt> V </rt>
 
-    rule <k> vh V:Bool => . </k>
+    rule <k> vh V:Bool => .K </k>
         <rh> V </rh>
 
-    rule <k> vs V:Bool => . </k>
+    rule <k> vs V:Bool => .K </k>
         <rs> V </rs>
 
-    rule <k> vv V:Bool => . </k>
+    rule <k> vv V:Bool => .K </k>
         <rv> V </rv>
 
-    rule <k> vn V:Bool => . </k>
+    rule <k> vn V:Bool => .K </k>
         <rn> V </rn>
 
-    rule <k> vz V:Bool => . </k>
+    rule <k> vz V:Bool => .K </k>
         <rz> V </rz>
 
-    rule <k> vc V:Bool => . </k>
+    rule <k> vc V:Bool => .K </k>
         <rc> V </rc>
 
-    rule <k> vsreg B:Int => . </k>
+    rule <k> vsreg B:Int => .K </k>
         <rc> Vc:Bool </rc>
         <rz> Vz:Bool </rz>
         <rn> Vn:Bool </rn>
@@ -62,7 +62,7 @@ imports MINT
         <ri> Vi:Bool </ri>
         when (Boolasbin(Vc, 0) +Int Boolasbin(Vz, 1) +Int Boolasbin(Vn, 2) +Int Boolasbin(Vv, 3) +Int Boolasbin(Vs, 4) +Int Boolasbin(Vh, 5) +Int Boolasbin(Vt, 6) +Int Boolasbin(Vi, 7)) ==Int B
 
-    rule <k> vclk Clk:Int => . </k>
+    rule <k> vclk Clk:Int => .K </k>
         <clockcycle> Clk </clockcycle>
 
     syntax Int ::= Boolasbin(Bool, Int) [function]

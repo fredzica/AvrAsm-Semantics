@@ -6,12 +6,14 @@ require "unittest.k"
 module AVRASM-SYNTAX
     imports UNIT_TEST-SYNTAX
 
+    // Assembly mnemonics that have two general purpose registers as operands
     syntax RRStmt ::= "add"
                     | "mov"
                     | "sub"
                     | "eor"
                     | "cp"
 
+    // Assembly instructions
     syntax Stmt ::= RRStmt Reg "," Reg
                     | "in" Reg "," IOReg
                     | "out" IOReg "," Reg
@@ -55,6 +57,8 @@ module AVRASM-SYNTAX
                     | "break"
                     | Label ":"
 
+    //TODO: Any of them should be seqstrict?
+    // Constant expressions
     syntax Exp ::= Int
                    | "-" Exp [strict]
                    > Exp "*" Exp [left, strict]
@@ -80,15 +84,22 @@ module AVRASM-SYNTAX
                    > Exp "?" Exp ":" Exp [strict]
                    > "(" Exp ")" [bracket]
 
-    syntax Reg ::= "R0" | "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8" | "R9" | "R10" | "R11" | "R12" | "R13" | "R14" | "R15" | "R16" | "R17" | "R18" | "R19" | "R20" | "R21" | "R22" | "R23" | "R24" | "R25" | "R26" | "R27" | "R28" | "R29" | "R30" | "R31" 
-
+    // General purpose registers
+    syntax Reg ::= "R0" | "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8" | "R9" | "R10" | "R11" | "R12"
+                | "R13" | "R14" | "R15" | "R16" | "R17" | "R18" | "R19" | "R20" | "R21" | "R22" | "R23" | "R24"
+                | "R25" | "R26" | "R27" | "R28" | "R29" | "R30" | "R31" 
+    
+    // IO Registers
     syntax IOReg ::= LowIOReg //load here the device-specific from .inc file - addresses 0-31
 
-  //syntax HighIOReg ::= 
+    //syntax HighIOReg ::= 
+    
     syntax LowIOReg ::=  "PORTA" | "PORTB" | "PORTC" | "PORTD" | "DDRA" | "DDRB" | "DDRC" | "DDRD" //load here the device-specific from .inc file - adresses 32-63
 
+    // Assembly labels
     syntax Label ::= Id
-
+    
+    // The program
     syntax Pgm ::= Stmt | Stmt Pgm
 
 endmodule
@@ -100,21 +111,45 @@ module AVRASM
     imports UNIT_TEST
     imports MINT
 
+    // Possible states of execution
     syntax State ::= "MAPPING" | "RUNNING" | "FINISHED"| "ERROR"
 
+    /*
+    The k cell will bear the code that is executed.
+
+    Cells inside execution manage the program execution. Contains the code and the current information about the execution.
+
+    The clockcycle cell contains the number of execution cycles. Its value is added upon with the execution of instructions.
+
+    Regd and regr contains the values of two registers operands of an instruction, only when it happens.
+
+    The cells registers and pins contains the general purpose registers and the pins of IO, respectively.
+
+    The Status Register cells are:
+    ri - Global Interrupt Enable/Disable Flag
+    rt - Transfer bit used by BLD and BST instructions
+    rh - Half Carry Flag
+    rs - N⊕ V, For signed tests
+    rv - Two’s complement overflow indicator
+    rn - Negative Flag
+    rz - Zero Flag
+    rc - Carry Flag
+   */
     configuration
         <T>
             <k> .K </k>
-            <pc> 0 </pc>
             
-            <init> $PGM:Pgm </init>
-            <state> MAPPING </state>
-            <stmts> .List </stmts>
-            <labels> .Map </labels>
-            <clockcycle> 0 </clockcycle>
+            <execution>            
+                <init> $PGM:Pgm </init>
+                <state> MAPPING </state>
+                <stmts> .List </stmts>
+                <labels> .Map </labels>
+                <pc> 0 </pc>
+            </execution>
 
-            <regd> . </regd>
-            <regr> . </regr>
+            <clockcycle> 0 </clockcycle>
+            <regd> .K </regd>
+            <regr> .K </regr>
             
             <registers> 
                 R0 |-> $mi(8, 0) R1 |-> $mi(8, 0) R2 |-> $mi(8, 0) R3 |-> $mi(8, 0) R4 |-> $mi(8, 0) R5 |-> $mi(8, 0) R6 |-> $mi(8, 0) R7 |-> $mi(8, 0) R8 |-> $mi(8, 0) R9 |-> $mi(8, 0) R10 |-> $mi(8, 0) R11 |-> $mi(8, 0) R12 |-> $mi(8, 0) R13 |-> $mi(8, 0) R14 |-> $mi(8, 0) R15 |-> $mi(8, 0) R16 |-> $mi(8, 0) R17 |-> $mi(8, 0) R18 |-> $mi(8, 0) R19 |-> $mi(8, 0) R20 |-> $mi(8, 0) R21 |-> $mi(8, 0) R22 |-> $mi(8, 0) R23 |-> $mi(8, 0) R24 |-> $mi(8, 0) R25 |-> $mi(8, 0) R26 |-> $mi(8, 0) R27 |-> $mi(8, 0) R28 |-> $mi(8, 0) R29 |-> $mi(8, 0) R30 |-> $mi(8, 0) R31 |-> $mi(8, 0) 
@@ -123,86 +158,86 @@ module AVRASM
                 PORTA |-> $mi(8, 0) PORTB |-> $mi(8, 0) PORTC |-> $mi(8, 0) PORTD |-> $mi(8, 0) DDRA |-> $mi(8, 0) DDRB |-> $mi(8, 0) DDRC |-> $mi(8, 0) DDRD |-> $mi(8, 0) 
             </pins>
             <sreg>
-                <ri> false </ri> // Global Interrupt Enable/Disable Flag
-                <rt> false </rt> // Transfer bit used by BLD and BST instructions
-                <rh> false </rh> // Half Carry Flag
-                <rs> false </rs> // N⊕ V, For signed tests
-                <rv> false </rv> // Two’s complement overflow indicator
-                <rn> false </rn> // Negative Flag
-                <rz> false </rz> // Zero Flag
-                <rc> false </rc> // Carry Flag
+                <ri> false </ri> 
+                <rt> false </rt>
+                <rh> false </rh>
+                <rs> false </rs>
+                <rv> false </rv>
+                <rn> false </rn>
+                <rz> false </rz>
+                <rc> false </rc>
             </sreg>
         </T>
 
 //////////////////////////// Rules ///////////////////////////////////
     
-    /////////// Initial line mapping /////////////
+    /////////////// Initial line mapping /////////////////////
 
-    // Syntax for Stmt list
+    // Syntax for stmt list
     syntax IdxStmt ::= "[" Int "," Stmt "]"
 
     //TODO: Find way to verify if every number in code is lesser than 256 and greater than -256 - E < 256 and E > -257
     
-    // Mapping stmts
+    // Maps all the program's instructions. Mapping is having them inside the stmts cell and numbering them.
     rule <init> S:Stmt P:Pgm => P </init>
         <stmts> .List => ListItem([0, S]) </stmts>
 
-    rule <init> S:Stmt => . </init>
+    rule <init> S:Stmt => .K </init>
         <stmts> .List => ListItem([0, S]) </stmts>
 
     rule <init> S:Stmt P:Pgm => P </init>
         <stmts>... ListItem([I:Int, T:Stmt]) => ListItem([I, T]) ListItem([I +Int 1, S]) </stmts>
 
-    rule <init> S:Stmt => . </init>
+    rule <init> S:Stmt => .K </init>
         <stmts>... ListItem([I:Int, T:Stmt]) => ListItem([I, T]) ListItem([I +Int 1, S]) </stmts>
     
-    // Mapping labels
+    // Find labels and put them in the labels cell
     rule <state> MAPPING </state>
-        <init> . </init>
+        <init> .K </init>
         <labels> Ls:Map (. => L |-> I) </labels>
         <stmts>... ListItem([I:Int, L:Label :]) ...</stmts>
-        when notBool (L in keys(Ls))
+        requires notBool (L in keys(Ls))
 
     rule <state> MAPPING => ERROR </state>// prevent duplicity of labels
-        <init> . </init>
+        <init> .K </init>
         <labels> _:Map (L:Label |-> Lm:Int) </labels>
         <stmts>... ListItem([Ln:Int, L :]) ...</stmts>
-        when Lm =/=Int Ln 
+        requires Lm =/=Int Ln 
 
     // When mapping finishes
-    rule <init> . </init>
+    rule <init> .K </init>
         <state> MAPPING => RUNNING </state>
 
-    /////////// Program execution //////////////
+    ///////////////// Program execution /////////////////
 
-    // Execution
+    // Instruction fetching
     rule <state> RUNNING </state>
-        <k> . => S </k>
-        <regd> _ => . </regd>
-        <regr> _ => . </regr>
-        <pc> PC => PC +Int 1 </pc>
-        <stmts>... ListItem([PC:Int, S:Stmt]) ...</stmts>
+        <k> .K => S </k>
+        <regd> _ => .K </regd>
+        <regr> _ => .K </regr>
+        <pc> PC:Int => PC +Int 1 </pc>
+        <stmts>... ListItem([PC, S:Stmt]) ...</stmts>
     
     // Puts registers into the cells for their values to be retrieved
     rule <k> _ Rd:Reg, Rr:Reg </k> 
-        <regd> . => Rd </regd>
-        <regr> . => Rr </regr>
+        <regd> .K => Rd </regd>
+        <regr> .K => Rr </regr>
         
-    // Retrieve registers values from the map
+    // Fetches values of the two registers
     rule <regd> R:Reg => Rv </regd>
         <registers>... R |-> Rv:MInt ...</registers>
     rule <regr> R:Reg => Rv </regr>
         <registers>... R |-> Rv:MInt ...</registers>
 
-    // Loop labels
-    rule <k> _:Label : => . </k> [structural]
+    // Label consuming during execution
+    rule <k> _:Label : => .K </k> [structural]
 
-    // When running finishes
-    rule <k> . </k> 
+    // When execution ends
+    rule <k> .K </k> 
         <pc> PC:Int </pc>
         <stmts>... ListItem([I:Int, _]) </stmts>
         <state> RUNNING => FINISHED </state>
-            when PC ==Int (I +Int 1)
+            requires PC ==Int (I +Int 1)
 
     /////////// Registers content assurance //////////
 
@@ -215,20 +250,19 @@ module AVRASM
 
     // Ensures 8-bits numbers in registers at any point in the execution
     rule <registers>... _ |-> ($mi(N:Int, I:Int) => toByte(uvalueMInt($mi(N, I)))) ...</registers>
-        when I >Int 255 orBool I <Int 0
+        requires I >Int 255 orBool I <Int 0
 
     /////////// Expression evaluation //////////
 
-    // KResult 
     syntax KResult ::= Int
 
     // Arithmetic
     //rule - I:Int => the unary minus is behaving correctly as is (by k framework Int)
     rule I1:Int * I2:Int => I1 *Int I2
-    rule I1:Int / I2:Int => I1 /Int I2
-    rule I1:Int % I2:Int => I1 modInt I2
-    rule ! I:Int => 0 when I =/=Int 0
-    rule ! I:Int => 1 when I ==Int 0
+    rule I1:Int / I2:Int => I1 /Int I2 requires I2 =/=Int 0
+    rule I1:Int % I2:Int => I1 modInt I2 requires I2 =/=Int 0
+    rule ! I:Int => 0 requires I =/=Int 0
+    rule ! I:Int => 1 requires I ==Int 0
     rule ~ I:Int => ~Int I
     rule I1:Int + I2:Int => I1 +Int I2
     rule I1:Int - I2:Int => I1 -Int I2
@@ -245,13 +279,13 @@ module AVRASM
     rule I1:Int | I2:Int => I1 |Int I2
     rule I1:Int && I2:Int => BooltoInt(I1 =/=Int 0 andBool I2 =/=Int 0)
     rule I1:Int || I2:Int => BooltoInt(I1 =/=Int 0 orBool I2 =/=Int 0)
-    rule I1:Int ? I2:Int : _:Int => I2 when I1 =/=Int 0
-    rule I1:Int ? _:Int : I3:Int => I3 when I1 ==Int 0
+    rule I1:Int ? I2:Int : _:Int => I2 requires I1 =/=Int 0
+    rule I1:Int ? _:Int : I3:Int => I3 requires I1 ==Int 0
 
     /////// Arithmetic and logic instructions ///////////
 
-    //ADD - add registers and place result in the first    
-    rule <k> add Rd:Reg, _:Reg => . </k>
+    //ADD - add registers and place result in the first  
+    rule <k> add Rd:Reg, _:Reg => .K </k>
         <regd> RdV:MInt </regd>
         <regr> RrV:MInt </regr>
         <registers>... (Rd |-> (_ => addMInt(RdV, RrV)))  ...</registers>
@@ -305,8 +339,8 @@ module AVRASM
         (notBool R3b) andBool
         Rd3b [macro]
 
-    //SUB - subtract registers and place result in the first    
-    rule <k> sub Rd:Reg, _:Reg => . </k>
+    //SUB - subtract registers and place result in the first
+    rule <k> sub Rd:Reg, _:Reg => .K </k>
         <regd> RdV:MInt </regd>
         <regr> RrV:MInt </regr>
         <registers>... Rd |-> (_ => subMInt(RdV, RrV)) ...</registers>
@@ -319,12 +353,12 @@ module AVRASM
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //SUBI - subtract immediate
-    rule <k> subi Rd:Reg, V:Int => . </k>
+    rule <k> subi Rd:Reg, V:Int => .K </k>
         <registers>... Rd |-> (RdV:MInt => subMInt(RdV, toByte(V))) ...</registers>
         <rh> _ => subrh(RdV, toByte(V)) </rh>
         <rs> _ => subrs(RdV, toByte(V)) </rs> 
         <rv> _ => subrv(RdV, toByte(V)) </rv>
-        <rn> _ => subrn(RdV, toByte(V)) </rn> 
+        <rn> _ => subrn(RdV, toByte(V)) </rn>
         <rz> _ => zeroMInt(subMInt(RdV, toByte(V))) </rz> // if result is zero
         <rc> _ => overflowMInt(usubMInt(RdV, toByte(V))) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
@@ -352,7 +386,7 @@ module AVRASM
         bit(subMInt(RdV, RrV), 7)
 
     //INC - increment
-    rule <k> inc Rd:Reg => . </k>
+    rule <k> inc Rd:Reg => .K </k>
         <registers>... Rd |-> (RdV:MInt => addMInt(RdV, toByte(1))) ...</registers>
         <rs> _ => incrs(RdV) </rs> 
         <rv> _ => incrv(RdV) </rv> 
@@ -378,7 +412,7 @@ module AVRASM
         bit(addMInt(RdV, toByte(1)), 7) [macro]
 
     //DEC - decrement
-    rule <k> dec Rd:Reg => . </k>
+    rule <k> dec Rd:Reg => .K </k>
         <registers>... Rd |-> (RdV:MInt => subMInt(RdV, toByte(1))) ...</registers>
         <rs> _ => decrs(RdV) </rs> 
         <rv> _ => decrv(RdV) </rv> 
@@ -386,7 +420,7 @@ module AVRASM
         <rz> _ => zeroMInt(subMInt(RdV, toByte(1))) </rz>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
     
-    //Dec flags
+    // Dec flags
     syntax Bool ::= decrs(MInt) [function]
     syntax Bool ::= decrv(MInt) [function]
     syntax Bool ::= decrn(MInt) [function]
@@ -404,7 +438,7 @@ module AVRASM
         bit(subMInt(RdV, toByte(1)), 7) [macro]
 
     //EOR - exclusive or
-    rule <k> eor Rd:Reg, _:Reg => . </k>
+    rule <k> eor Rd:Reg, _:Reg => .K </k>
         <regd> RdV:MInt </regd>
         <regr> RrV:MInt </regr>
         <registers>... Rd |-> (_ => xorMInt(RdV, RrV)) ...</registers>
@@ -421,16 +455,16 @@ module AVRASM
     rule eorrn(RdV:MInt, RrV:MInt) =>
        bit(xorMInt(RdV, RrV), 7) [macro]
 
-    //CLR - clear register
+    // CLR - Clear register. As it is a rewrite to EOR, the same flags modified in EOR will be modified here.
     rule clr Rd:Reg => eor Rd, Rd [macro]
 
-    //SER - set register -- no flags need to be set here
+    //SER - set register. No flags set
     rule ser Rd:Reg => ldi Rd, 255 [macro]
     
     /////////////// Branch Instructions /////////////
 
-    //CP - compare
-    rule <k> cp _:Reg, _:Reg => . </k>
+    //CP - compare registers
+    rule <k> cp _:Reg, _:Reg => .K </k>
         <regd> RdV:MInt </regd>
         <regr> RrV:MInt </regr>
         <rh> _ => subrh(RdV, RrV) </rh> 
@@ -442,63 +476,64 @@ module AVRASM
         <clockcycle> C:Int => C +Int 1 </clockcycle> 
 
     //JMP - jump to label
-    rule <k> jmp La:Label => . </k>
+    rule <k> jmp La:Label => .K </k>
         <pc> _ => Line </pc>
         <labels>... La |-> Line:Int ...</labels>
         <clockcycle> C:Int => C +Int 3 </clockcycle>
 
     //BREQ - branch if equal
-    rule <k> breq La:Label => . </k>
+    rule <k> breq La:Label => .K </k>
         <pc> _ => Line </pc>
         <labels>... La |-> Line:Int ...</labels>
         <rz> true </rz>
         <clockcycle> C:Int => C +Int 2 </clockcycle>
 
-    rule <k> breq _ => . </k>
+    rule <k> breq _ => .K </k>
         <rz> false </rz>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //BRNE - branch if not equal
-    rule <k> brne La:Label => .  </k>
+    rule <k> brne La:Label => .K  </k>
         <pc> _ => Line </pc>
         <labels>... La |-> Line:Int ...</labels>
         <rz> false </rz>
         <clockcycle> C:Int => C +Int 2 </clockcycle>
 
-    rule <k> brne _ => . </k>
+    rule <k> brne _ => .K </k>
         <rz> true </rz>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     /////////////// Data Transfer //////////////////
 
     //MOV - copy register
-    rule <k> mov Rd:Reg, _:Reg => . </k>
+    rule <k> mov Rd:Reg, _:Reg => .K </k>
         <regr> RrV:MInt </regr>
         <registers>... Rd |-> (_ => RrV) ...</registers>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //LDI - load immediate
-    rule <k> ldi Rd:Reg, V:Int => . </k> 
+    rule <k> ldi Rd:Reg, V:Int => .K </k> 
         <registers>... Rd |-> (_ => V) ...</registers>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
    
     //IN - read input into register
-    rule <k> in Rd:Reg, Ior:IOReg => . </k>
+    rule <k> in Rd:Reg, Ior:IOReg => .K </k>
         <pins>... (Ior |-> IorV:MInt) ...</pins> 
         <registers>... Rd |-> (_ => IorV) ...</registers>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
    
-    //OUT - configure pins for out or in
-    rule <k> out Ior:IOReg, Rr:Reg => . </k> 
+    //OUT - configure pins for in or out
+    rule <k> out Ior:IOReg, Rr:Reg => .K </k> 
         <registers>...  (Rr |-> RrV:MInt) ...</registers>
         <pins>... Ior |-> (_ => RrV) ...</pins>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
    
     ///////// Bit and Bit-test instructions /////////
 
-    //ROR - Rotate right through carry
-    rule <k> ror Rd:Reg => . </k>
+    //ROR - rotate right through carry
+    rule <k> ror Rd:Reg => .K </k>
         <registers>... Rd |-> (Rdv:MInt => orMInt(shlMInt(BooltoMInt(Cv), 7), ashrMInt(Rdv, 1))) ...</registers>
+<br/>
         <rs> _ => bit(orMInt(shlMInt(BooltoMInt(Cv), 7), ashrMInt(Rdv, 1)), 7) xorBool bit(orMInt(shlMInt(BooltoMInt(Cv), 7), ashrMInt(Rdv, 1)), 7) xorBool bit(Rdv, 0) </rs> //N ⊕ V
         <rv> _ => bit(orMInt(shlMInt(BooltoMInt(Cv), 7), ashrMInt(Rdv, 1)), 7) xorBool bit(Rdv, 0) </rv> //N ⊕ C
         <rn> _ => bit(orMInt(shlMInt(BooltoMInt(Cv), 7), ashrMInt(Rdv, 1)), 7) </rn>
@@ -506,8 +541,9 @@ module AVRASM
         <rc> Cv:Bool => bit(Rdv, 0) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
-    //ASR - Arithmetic shift right
-    rule <k> asr Rd:Reg => . </k>
+
+    //ASR - arithmetic shift right
+    rule <k> asr Rd:Reg => .K </k>
         <registers>... Rd |-> (Rdv:MInt => sshrMInt(Rdv,1)) ...</registers>
         <rs> _ => bit(sshrMInt(Rdv, 1), 7) xorBool (bit(sshrMInt(Rdv,1), 7) xorBool bit(Rdv, 0)) </rs>//N ⊕ V
         <rv> _ => bit(sshrMInt(Rdv, 1), 7) xorBool bit(Rdv, 0) </rv> //N ⊕ C
@@ -516,184 +552,184 @@ module AVRASM
         <rc> _ => bit(Rdv, 0) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
-    //SWAP - Swap nibbles
-    rule <k> swap Rd:Reg => . </k>
+    //SWAP - swap nibbles
+    rule <k> swap Rd:Reg => .K </k>
         <registers>...  Rd |-> (Rdv:MInt => orMInt(shlMInt(Rdv, 4), ashrMInt(Rdv, 4))) ...</registers>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
-    //BSET - Set flag
+    //BSET - set SREG flag
     rule <k> bset S:Int => sec </k>
-        when S ==Int 0 [structural]
+        requires S ==Int 0 [structural]
         
     rule <k> bset S:Int => sez </k> 
-        when S ==Int 1 [structural]
+        requires S ==Int 1 [structural]
         
     rule <k> bset S:Int => sen </k> 
-        when S ==Int 2 [structural]
+        requires S ==Int 2 [structural]
         
     rule <k> bset S:Int => sev </k> 
-        when S ==Int 3 [structural]
+        requires S ==Int 3 [structural]
         
     rule <k> bset S:Int => ses </k> 
-        when S ==Int 4 [structural]
+        requires S ==Int 4 [structural]
         
     rule <k> bset S:Int => seh </k> 
-        when S ==Int 5 [structural]
+        requires S ==Int 5 [structural]
         
     rule <k> bset S:Int => set </k>
-        when S ==Int 6 [structural]
+        requires S ==Int 6 [structural]
         
     rule <k> bset S:Int => sei </k> 
-        when S ==Int 7 [structural]
+        requires S ==Int 7 [structural]
 
-    //BCLR - Clear flag
+    //BCLR - clear SREG flag
     rule <k> bclr S:Int => clc </k> 
-        when S ==Int 0 [structural]
+        requires S ==Int 0 [structural]
         
     rule <k> bclr S:Int => clz </k> 
-        when S ==Int 1 [structural]
+        requires S ==Int 1 [structural]
         
     rule <k> bclr S:Int => cln </k> 
-        when S ==Int 2 [structural]
+        requires S ==Int 2 [structural]
         
     rule <k> bclr S:Int => clv </k> 
-        when S ==Int 3 [structural]
+        requires S ==Int 3 [structural]
         
     rule <k> bclr S:Int => cls </k> 
-        when S ==Int 4 [structural]
+        requires S ==Int 4 [structural]
         
     rule <k> bclr S:Int => clh </k> 
-        when S ==Int 5 [structural]
+        requires S ==Int 5 [structural]
         
     rule <k> bclr S:Int => clt </k> 
-        when S ==Int 6 [structural]
+        requires S ==Int 6 [structural]
         
     rule <k> bclr S:Int => cli </k> 
-        when S ==Int 7 [structural]
+        requires S ==Int 7 [structural]
         
-    //SBI P,b - Set bit in I/O register
-    rule <k> sbi Ior:LowIOReg, B:Int => . </k>
+    //SBI P,b - set bit in I/O register
+    rule <k> sbi Ior:LowIOReg, B:Int => .K </k>
         <pins>... Ior |-> (Iorv:MInt => set(Iorv, B)) ...</pins>
         <clockcycle> C:Int => C +Int 2 </clockcycle>
 
-    //CBI P,b - Clear bit in I/O register
-    rule <k> cbi Ior:LowIOReg, B:Int => . </k>
+    //CBI P,b - clear bit in I/O register
+    rule <k> cbi Ior:LowIOReg, B:Int => .K </k>
         <pins>... Ior |-> (Iorv:MInt => clr(Iorv, B)) ...</pins>
         <clockcycle> C:Int => C +Int 2 </clockcycle>
 
-    //BST Rr,b - Bit store from register to T
-    rule <k> bst Rd:Reg, B:Int => . </k>
+    //BST Rr,b - bit store from register to T
+    rule <k> bst Rd:Reg, B:Int => .K </k>
         <registers>... Rd |-> Rdv:MInt ...</registers>
         <rt> _ => bit(Rdv, B) </rt>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //BLD Rd,b - Bit load from register to T
-    rule <k> bld Rd:Reg, B:Int => . </k>
+    rule <k> bld Rd:Reg, B:Int => .K </k>
         <registers>... Rd |-> (Rdv:MInt => set(Rdv, B)) ...</registers>
         <rt> true </rt>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
-    rule <k> bld Rd:Reg, B:Int => . </k>
+    rule <k> bld Rd:Reg, B:Int => .K </k>
         <registers>... Rd |-> (Rdv:MInt => clr(Rdv, B)) ...</registers>
         <rt> false </rt>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //SEC - Set carry flag
-    rule <k> sec => . </k>
+    rule <k> sec => .K </k>
         <rc> _ => true </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //CLC - Clear carry flag
-    rule <k> clc => . </k>
+    rule <k> clc => .K </k>
         <rc> _ => false </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //SEN - Set negative flag
-    rule <k> sen => . </k>
+    rule <k> sen => .K </k>
         <rn> _ => true </rn>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //CLN - Clear negative flag
-    rule <k> cln => . </k>
+    rule <k> cln => .K </k>
         <rn> _ => false </rn>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //SEZ - Set zero flag
-    rule <k> sez => . </k>
+    rule <k> sez => .K </k>
         <rz> _ => true </rz>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //CLZ - Clear zero flag
-    rule <k> clz => . </k>
+    rule <k> clz => .K </k>
         <rz> _ => false </rz>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //SEI - Set interrupt flag
-    rule <k> sei => . </k>
+    rule <k> sei => .K </k>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
         <ri> _ => true </ri>
 
     //CLI - Clear interrupt flag
-    rule <k> cli => . </k>
+    rule <k> cli => .K </k>
         <ri> _ => false </ri>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //SES - Set signed flag
-    rule <k> ses => . </k>
+    rule <k> ses => .K </k>
         <rs> _ => true </rs>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //CLN - Clear signed flag
-    rule <k> cls => . </k>
+    rule <k> cls => .K </k>
         <rs> _ => false </rs>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //SEV - Set overflow flag
-    rule <k> sev => . </k>
+    rule <k> sev => .K </k>
         <rv> _ => true </rv>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //CLV - Clear overflow flag
-    rule <k> clv => . </k>
+    rule <k> clv => .K </k>
         <rv> _ => false </rv>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //SET - Set T-flag
-    rule <k> set => . </k>
+    rule <k> set => .K </k>
         <rt> _ => true </rt>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //CLT - Clear T-flag
-    rule <k> clt => . </k>
+    rule <k> clt => .K </k>
         <rt> _ => false </rt>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //SEH - Set half carry flag
-    rule <k> seh => . </k>
+    rule <k> seh => .K </k>
         <rh> _ => true </rh>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //CLH - Clear half carry flag
-    rule <k> clh => . </k>
+    rule <k> clh => .K </k>
         <rh> _ => false </rh>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
-    /////////////////// MCU control ////////////////////
+    // MCU control
 
     //SLEEP - sleep
-    rule <k> sleep => . </k>
+    rule <k> sleep => .K </k>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //NOP - no operation
-    rule <k> nop => . </k>
+    rule <k> nop => .K </k>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
     
     //WDR - watchdog reset
-    rule <k> wdr => . </k>
+    rule <k> wdr => .K </k>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
     
     //BREAK - for on-chip debug
-    rule <k> break => . </k>
+    rule <k> break => .K </k>
 
 endmodule
 

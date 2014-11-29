@@ -32,3 +32,5 @@ ldi R17, 255
 add R16, R17
 ;@vreg R16, 119
 ;@vsreg 0x21
+
+ldi R31,10
