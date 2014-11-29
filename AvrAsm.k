@@ -284,43 +284,46 @@ module AVRASM
 
     /////// Arithmetic and logic instructions ///////////
 
+    // Function used to calculate the N flag of the SREG
+    syntax Bool ::= rn(MInt) [function]
+    rule rn(R:MInt) => bit(R, 7) [macro]
+    
     //ADD - add registers and place result in the first  
     rule <k> add Rd:Reg, _:Reg => .K </k>
         <regd> RdV:MInt </regd>
         <regr> RrV:MInt </regr>
-        <registers>... (Rd |-> (_ => addMInt(RdV, RrV)))  ...</registers>
+        <registers>... (Rd |-> (_ => add(RdV, RrV)))  ...</registers>
         <rh> _ => addrh(RdV, RrV) </rh> 
         <rs> _ => addrs(RdV, RrV) </rs>   
         <rv> _ => addrv(RdV, RrV) </rv>
-        <rn> _ => addrn(RdV, RrV) </rn>
-        <rz> _ => zeroMInt(addMInt(RdV, RrV)) </rz>
+        <rn> _ => rn(add(RdV, RrV)) </rn>
+        <rz> _ => zeroMInt(add(RdV, RrV)) </rz> //FIXME: maybe the overflow won't happen here?
         <rc> _ => overflowMInt(uaddMInt(RdV, RrV)) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     // Add flags
-    syntax Bool ::= addrh(MInt, MInt) [function]    
+    syntax MInt ::= add(MInt, MInt) [function]
+    syntax Bool ::= addrh(MInt, MInt) [function]
     syntax Bool ::= addrs(MInt, MInt) [function]
     syntax Bool ::= addrv(MInt, MInt) [function]
-    syntax Bool ::= addrn(MInt, MInt) [function]    
     syntax Bool ::= addrvimpl(Bool, Bool, Bool) [function]
-    syntax Bool ::= addrhimpl(Bool, Bool, Bool) [function]    
+    syntax Bool ::= addrhimpl(Bool, Bool, Bool) [function]
+
+    rule add(RdV:MInt, RrV:MInt) =>
+        addMInt(RdV, RrV) [macro]
 
     // Get bools and result from MInts
     rule addrh(RdV:MInt, RrV:MInt) =>
-        addrhimpl(bit(RdV, 3), bit(RrV, 3), bit(addMInt(RdV, RrV), 3)) [macro]
+        addrhimpl(bit(RdV, 3), bit(RrV, 3), bit(add(RdV, RrV), 3)) [macro]
 
     // V⊕ N for signed tests
     rule addrs(RdV:MInt, RrV:MInt) =>
-        addrv(RdV, RrV) xorBool addrn(RdV, RrV) [macro]
+        addrv(RdV, RrV) xorBool rn(add(RdV, RrV)) [macro]
 
     // Get bools and result from MInts
     rule addrv(RdV:MInt, RrV:MInt) =>
-        addrvimpl(bit(RdV, 7), bit(RrV, 7), bit(addMInt(RdV, RrV), 7)) [macro]
+        addrvimpl(bit(RdV, 7), bit(RrV, 7), bit(add(RdV, RrV), 7)) [macro]
     
-    // R7
-    rule addrn(RdV:MInt, RrV:MInt) =>
-        bit(addMInt(RdV, RrV), 7) [macro]
-
     // Rd7 • Rr7 • R7 ¯ + Rd7 ¯ • Rr7 ¯ • R7 - What is the meaning of this???
     rule addrvimpl(Rd7b:Bool, Rr7b:Bool, R7b:Bool) => 
         Rd7b andBool 
@@ -343,117 +346,113 @@ module AVRASM
     rule <k> sub Rd:Reg, _:Reg => .K </k>
         <regd> RdV:MInt </regd>
         <regr> RrV:MInt </regr>
-        <registers>... Rd |-> (_ => subMInt(RdV, RrV)) ...</registers>
+        <registers>... Rd |-> (_ => sub(RdV, RrV)) ...</registers>
         <rh> _ => subrh(RdV, RrV) </rh> 
         <rs> _ => subrs(RdV, RrV) </rs>
         <rv> _ => subrv(RdV, RrV) </rv> 
-        <rn> _ => subrn(RdV, RrV) </rn>
+        <rn> _ => rn(sub(RdV, RrV)) </rn>
         <rz> _ => eqMInt(RdV, RrV) </rz> // if result is zero
         <rc> _ => overflowMInt(usubMInt(RdV, RrV)) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //SUBI - subtract immediate
     rule <k> subi Rd:Reg, V:Int => .K </k>
-        <registers>... Rd |-> (RdV:MInt => subMInt(RdV, toByte(V))) ...</registers>
+        <registers>... Rd |-> (RdV:MInt => sub(RdV, toByte(V))) ...</registers>
         <rh> _ => subrh(RdV, toByte(V)) </rh>
         <rs> _ => subrs(RdV, toByte(V)) </rs> 
         <rv> _ => subrv(RdV, toByte(V)) </rv>
-        <rn> _ => subrn(RdV, toByte(V)) </rn>
-        <rz> _ => zeroMInt(subMInt(RdV, toByte(V))) </rz> // if result is zero
+        <rn> _ => rn(sub(RdV, toByte(V))) </rn>
+        <rz> _ => zeroMInt(sub(RdV, toByte(V))) </rz> // if result is zero
         <rc> _ => overflowMInt(usubMInt(RdV, toByte(V))) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     // Sub flags
+    syntax MInt ::= sub(MInt, MInt) [function]
     syntax Bool ::= subrh(MInt, MInt) [function]
     syntax Bool ::= subrs(MInt, MInt) [function]
     syntax Bool ::= subrv(MInt, MInt) [function]
-    syntax Bool ::= subrn(MInt, MInt) [function]
+
+    rule sub(RdV:MInt, RrV:MInt) =>
+        subMInt(RdV, RrV) [macro]
 
     // Rd3 ¯ • Rr3 + Rr3 • R3 + R3 • Rd3 ¯
     rule subrh(RdV:MInt, RrV:MInt) =>
-        addrhimpl((notBool bit(RdV, 3)), bit(RrV, 3), (notBool bit(subMInt(RdV, RrV), 3))) [macro]
+        addrhimpl((notBool bit(RdV, 3)), bit(RrV, 3), (notBool bit(sub(RdV, RrV), 3))) [macro]
 
     // N ⊕ V
     rule subrs(RdV:MInt, RrV:MInt) =>
-        subrn(RdV, RrV) xorBool subrv(RdV, RrV) [macro]
+        rn(sub(RdV, RrV)) xorBool subrv(RdV, RrV) [macro]
 
     // Rd7 • Rr7 ¯ • R7 ¯ + Rd7 ¯ • Rr7 • R7
     rule subrv(RdV:MInt, RrV:MInt) => 
-        addrvimpl(bit(RdV, 7), (notBool bit(RrV, 7)), bit(subMInt(RdV, RrV), 7)) [macro]
-
-    // R7
-    rule subrn(RdV:MInt, RrV:MInt) =>
-        bit(subMInt(RdV, RrV), 7)
+        addrvimpl(bit(RdV, 7), (notBool bit(RrV, 7)), bit(sub(RdV, RrV), 7)) [macro]
 
     //INC - increment
     rule <k> inc Rd:Reg => .K </k>
-        <registers>... Rd |-> (RdV:MInt => addMInt(RdV, toByte(1))) ...</registers>
+        <registers>... Rd |-> (RdV:MInt => inc(RdV)) ...</registers>
         <rs> _ => incrs(RdV) </rs> 
         <rv> _ => incrv(RdV) </rv> 
-        <rn> _ => incrn(RdV) </rn>
-        <rz> _ => zeroMInt(addMInt(RdV, toByte(1))) </rz>
+        <rn> _ => rn(inc(RdV)) </rn>
+        <rz> _ => zeroMInt(inc(RdV)) </rz>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
-    // Inc flags
+    // Inc auxiliary functions
+    syntax MInt ::= inc(MInt) [function]
     syntax Bool ::= incrs(MInt) [function]
     syntax Bool ::= incrv(MInt) [function]
-    syntax Bool ::= incrn(MInt) [function]
+
+    rule inc(RdV:MInt) =>
+        add(RdV, toByte(1)) [macro]
 
     // N ⊕ V
     rule incrs(RdV:MInt) =>
-        incrn(RdV) xorBool incrv(RdV) [macro]
+        rn(inc(RdV)) xorBool incrv(RdV) [macro]
 
     // R7 • R6 ¯ • R5 ¯ • R4 ¯ • R3 ¯ • R2 ¯ • R1 ¯ • R0 ¯
     rule incrv(RdV:MInt) =>
        eqMInt(RdV, toByte(127)) [macro]
 
-    // R7
-    rule incrn(RdV:MInt) =>
-        bit(addMInt(RdV, toByte(1)), 7) [macro]
-
     //DEC - decrement
     rule <k> dec Rd:Reg => .K </k>
-        <registers>... Rd |-> (RdV:MInt => subMInt(RdV, toByte(1))) ...</registers>
+        <registers>... Rd |-> (RdV:MInt => dec(RdV)) ...</registers>
         <rs> _ => decrs(RdV) </rs> 
         <rv> _ => decrv(RdV) </rv> 
-        <rn> _ => decrn(RdV) </rn>
-        <rz> _ => zeroMInt(subMInt(RdV, toByte(1))) </rz>
+        <rn> _ => rn(dec(RdV)) </rn>
+        <rz> _ => zeroMInt(dec(RdV)) </rz>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
     
     // Dec flags
+    syntax MInt ::= dec(MInt) [function]
     syntax Bool ::= decrs(MInt) [function]
     syntax Bool ::= decrv(MInt) [function]
-    syntax Bool ::= decrn(MInt) [function]
+
+    rule dec(RdV:MInt) =>
+        sub(RdV, toByte(1)) [macro]
 
     // N ⊕ V
     rule decrs(RdV:MInt) =>
-        decrn(RdV) xorBool decrv(RdV) [macro]
+        rn(dec(RdV)) xorBool decrv(RdV) [macro]
 
     // R7 ¯ • R6 • R5 • R4 • R3 • R2 • R1 • R0
     rule decrv(RdV:MInt) =>
         eqMInt(RdV, toByte(128)) [macro]
 
-    // R7
-    rule decrn(RdV:MInt) =>
-        bit(subMInt(RdV, toByte(1)), 7) [macro]
-
     //EOR - exclusive or
     rule <k> eor Rd:Reg, _:Reg => .K </k>
         <regd> RdV:MInt </regd>
         <regr> RrV:MInt </regr>
-        <registers>... Rd |-> (_ => xorMInt(RdV, RrV)) ...</registers>
-        <rs> _ => eorrn(RdV, RrV) xorBool false </rs> // N ⊕ V
+        <registers>... Rd |-> (_ => eor(RdV, RrV)) ...</registers>
+        <rs> _ => rn(eor(RdV, RrV)) xorBool false </rs> // N ⊕ V
         <rv> _ => false </rv>
-        <rn> _ => eorrn(RdV, RrV) </rn>
-        <rz> _ => zeroMInt(xorMInt(RdV, RrV)) </rz>
+        <rn> _ => rn(eor(RdV, RrV)) </rn>
+        <rz> _ => zeroMInt(eor(RdV, RrV)) </rz>
         <clockcycle> C:Int => C +Int 1 </clockcycle> 
    
-    // Eor flags
-    syntax Bool ::= eorrn(MInt, MInt) [function]
-    
-    // R7
-    rule eorrn(RdV:MInt, RrV:MInt) =>
-       bit(xorMInt(RdV, RrV), 7) [macro]
+    // Eor
+    syntax MInt ::= eor(MInt, MInt) [function]
+   
+    rule eor(RdV:MInt, RrV:MInt) =>
+       xorMInt(RdV, RrV) [macro]
 
     // CLR - Clear register. As it is a rewrite to EOR, the same flags modified in EOR will be modified here.
     rule clr Rd:Reg => eor Rd, Rd [macro]
@@ -470,7 +469,7 @@ module AVRASM
         <rh> _ => subrh(RdV, RrV) </rh> 
         <rs> _ => subrs(RdV, RrV) </rs>
         <rv> _ => subrv(RdV, RrV) </rv> 
-        <rn> _ => subrn(RdV, RrV) </rn>
+        <rn> _ => rn(sub(RdV, RrV)) </rn>
         <rz> _ => zeroMInt(subMInt(RdV, RrV)) </rz> // if result is zero
         <rc> _ => ultMInt(RdV, RrV) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle> 
@@ -532,25 +531,49 @@ module AVRASM
 
     //ROR - rotate right through carry
     rule <k> ror Rd:Reg => .K </k>
-        <registers>... Rd |-> (Rdv:MInt => orMInt(shlMInt(BooltoMInt(Cv), 7), ashrMInt(Rdv, 1))) ...</registers>
-<br/>
-        <rs> _ => bit(orMInt(shlMInt(BooltoMInt(Cv), 7), ashrMInt(Rdv, 1)), 7) xorBool bit(orMInt(shlMInt(BooltoMInt(Cv), 7), ashrMInt(Rdv, 1)), 7) xorBool bit(Rdv, 0) </rs> //N ⊕ V
-        <rv> _ => bit(orMInt(shlMInt(BooltoMInt(Cv), 7), ashrMInt(Rdv, 1)), 7) xorBool bit(Rdv, 0) </rv> //N ⊕ C
-        <rn> _ => bit(orMInt(shlMInt(BooltoMInt(Cv), 7), ashrMInt(Rdv, 1)), 7) </rn>
-        <rz> _ => eqMInt((orMInt(shlMInt(BooltoMInt(Cv), 7), ashrMInt(Rdv, 1))), toByte(0)) </rz>
-        <rc> Cv:Bool => bit(Rdv, 0) </rc>
+        <registers>... Rd |-> (Rdv:MInt => ror(Rdv, Cv)) ...</registers>
+        <rs> _ => rn(ror(Rdv, Cv)) xorBool rorrv(Rdv, Cv) </rs> //N ⊕ V
+        <rv> _ => rorrv(Rdv, Cv) </rv> //N ⊕ C
+        <rn> _ => rn(ror(Rdv, Cv)) </rn>
+        <rz> _ => zeroMInt(ror(Rdv, Cv)) </rz>
+        <rc> Cv:Bool => rorrc(Rdv) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
+
+    // ROR auxiliary functions
+    syntax MInt ::= ror(MInt, Bool) [function]
+    syntax Bool ::= rorrv(MInt, Bool) [function]
+    syntax Bool ::= rorrc(MInt) [function]
+
+    rule ror(Rdv:MInt, Cv:Bool) => 
+        orMInt(shlMInt(BooltoMInt(Cv), 7), ashrMInt(Rdv, 1)) [macro]
+
+    rule rorrv(Rdv:MInt, Cv:Bool) => 
+        rn(ror(Rdv, Cv)) xorBool rorrc(Rdv) [macro]
+
+    rule rorrc(Rdv:MInt) => 
+        bit(Rdv, 0) [macro]
 
 
     //ASR - arithmetic shift right
     rule <k> asr Rd:Reg => .K </k>
-        <registers>... Rd |-> (Rdv:MInt => sshrMInt(Rdv,1)) ...</registers>
-        <rs> _ => bit(sshrMInt(Rdv, 1), 7) xorBool (bit(sshrMInt(Rdv,1), 7) xorBool bit(Rdv, 0)) </rs>//N ⊕ V
-        <rv> _ => bit(sshrMInt(Rdv, 1), 7) xorBool bit(Rdv, 0) </rv> //N ⊕ C
-        <rn> _ => bit(sshrMInt(Rdv, 1), 7) </rn>
-        <rz> _ => eqMInt(sshrMInt(Rdv, 1), toByte(0)) </rz>
-        <rc> _ => bit(Rdv, 0) </rc>
+        <registers>... Rd |-> (RdV:MInt => asr(RdV)) ...</registers>
+        <rs> _ => rn(asr(RdV)) xorBool asrrv(RdV) </rs>//N ⊕ V
+        <rv> _ => asrrv(RdV) </rv> //N ⊕ C
+        <rn> _ => rn(asr(RdV)) </rn>
+        <rz> _ => zeroMInt(asr(RdV)) </rz>
+        <rc> _ => rorrc(RdV) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
+
+    //ASR auxiliary functions
+    syntax MInt ::= asr(MInt) [function]
+    syntax Bool ::= asrrv(MInt) [function]
+
+    rule asr(RdV:MInt) => 
+        sshrMInt(RdV, 1) [macro]
+
+    rule asrrv(RdV) =>
+        rn(asr(RdV)) xorBool rorrc(RdV) [macro]
+        
 
     //SWAP - swap nibbles
     rule <k> swap Rd:Reg => .K </k>
