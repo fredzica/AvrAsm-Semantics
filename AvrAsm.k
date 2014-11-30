@@ -17,6 +17,8 @@ module AVRASM-SYNTAX
     syntax Stmt ::= RRStmt Reg "," Reg
                     | "in" Reg "," IOReg
                     | "out" IOReg "," Reg
+                    | "push" Reg
+                    | "pop" Reg
                     | "ldi" Reg "," Exp [strict(2)]
                     | "subi" Reg "," Exp [strict(2)]
                     | "bst" Reg "," Exp [strict(2)]
@@ -148,9 +150,13 @@ module AVRASM
             </execution>
 
             <clockcycle> 0 </clockcycle>
+            
             <regd> .K </regd>
             <regr> .K </regr>
-            
+           
+            <spointer> 0 </spointer> 
+            <stack> .List </stack>
+    
             <registers> 
                 R0 |-> $mi(8, 0) R1 |-> $mi(8, 0) R2 |-> $mi(8, 0) R3 |-> $mi(8, 0) R4 |-> $mi(8, 0) R5 |-> $mi(8, 0) R6 |-> $mi(8, 0) R7 |-> $mi(8, 0) R8 |-> $mi(8, 0) R9 |-> $mi(8, 0) R10 |-> $mi(8, 0) R11 |-> $mi(8, 0) R12 |-> $mi(8, 0) R13 |-> $mi(8, 0) R14 |-> $mi(8, 0) R15 |-> $mi(8, 0) R16 |-> $mi(8, 0) R17 |-> $mi(8, 0) R18 |-> $mi(8, 0) R19 |-> $mi(8, 0) R20 |-> $mi(8, 0) R21 |-> $mi(8, 0) R22 |-> $mi(8, 0) R23 |-> $mi(8, 0) R24 |-> $mi(8, 0) R25 |-> $mi(8, 0) R26 |-> $mi(8, 0) R27 |-> $mi(8, 0) R28 |-> $mi(8, 0) R29 |-> $mi(8, 0) R30 |-> $mi(8, 0) R31 |-> $mi(8, 0) 
             </registers>
@@ -526,7 +532,27 @@ module AVRASM
         <registers>...  (Rr |-> RrV:MInt) ...</registers>
         <pins>... Ior |-> (_ => RrV) ...</pins>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
-   
+
+    //PUSH - stores register value on the stack
+    rule <k> push Rr:Reg => . </k>
+        <spointer> SP:Int => SP -Int 1 </spointer>
+        <stack>... . => ListItem(RrV:MInt) </stack>
+        <registers>... Rr |-> RrV ...</registers>
+        <clockcycle> C:Int => C +Int 2 </clockcycle>
+  
+    //POP - loads register with byte from the stack
+    rule <k> pop Rd:Reg => . </k>
+        <spointer> SP:Int => SP +Int 1 </spointer>
+        <stack>... ListItem(I:MInt) => .  </stack>
+        <registers>... Rd |-> (_ => I) ...</registers>
+        <clockcycle> C:Int => C +Int 2 </clockcycle>
+ 
+    rule <k> pop Rd:Reg => . </k>
+        <spointer> SP:Int => SP +Int 1 </spointer>
+        <stack> .List </stack>
+        <registers>... Rd |-> (_ => toByte(0)) ...</registers>
+        <clockcycle> C:Int => C +Int 2 </clockcycle>
+ 
     ///////// Bit and Bit-test instructions /////////
 
     //ROR - rotate right through carry

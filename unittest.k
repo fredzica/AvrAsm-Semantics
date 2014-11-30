@@ -7,6 +7,7 @@ module UNIT_TEST-SYNTAX
                     | "vpin" IOReg "," Exp
                     | "vsreg" Exp
                     | "vclk" Exp
+                    | "vstack" Exp
                     | "vi" Bool
                     | "vt" Bool
                     | "vh" Bool
@@ -64,6 +65,9 @@ imports MINT
 
     rule <k> vclk Clk:Int => .K </k>
         <clockcycle> Clk </clockcycle>
+    
+    rule <k> vstack E:Int => .K </k>
+        <stack>... ListItem($mi(8, E)) </stack>
 
     syntax Int ::= Boolasbin(Bool, Int) [function]
     rule Boolasbin(false, _) => 0
