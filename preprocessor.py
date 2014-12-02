@@ -87,7 +87,7 @@ content = handle_includes(content, abs_path)
 content = handle_equ_def_set(content)
 content = remove_comments(content)
 content = process_literals(content)
-print(content)
+
 with open(filename, 'w') as fw:
     fw.write(content)
 
