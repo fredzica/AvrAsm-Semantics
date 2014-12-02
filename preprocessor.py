@@ -29,6 +29,18 @@ def handle_includes(content, abs_path):
 
     return new_content
 
+#FIXME: Def and set can be redefined later in the file. This behaviour won't work
+def handle_equ_def_set(txt):
+    regex_p = r"\.(equ|def|set)\s*(.+?)\s*=\s*(.+?)(\s+|$)"
+    ms = re.findall(regex_p, txt, flags = re.IGNORECASE)
+    new_txt = re.sub(regex_p + "\n", "", txt, flags = re.IGNORECASE | re.MULTILINE)
+
+    word_boundary = r"\b"
+    #reversed so it can replace symbols defined with other symbols
+    for m in reversed(ms):
+        new_txt = re.sub(word_boundary + m[1] + word_boundary, m[2], new_txt, flags = re.IGNORECASE)
+
+    return new_txt
 
 def remove_comments(txt):
     #unit tests
@@ -72,9 +84,10 @@ with open(filename, 'r') as fr:
     content = fr.read()
 
 content = handle_includes(content, abs_path)
+content = handle_equ_def_set(content)
 content = remove_comments(content)
 content = process_literals(content)
-
+print(content)
 with open(filename, 'w') as fw:
     fw.write(content)
 
