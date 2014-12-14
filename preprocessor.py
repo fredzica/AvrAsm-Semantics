@@ -99,7 +99,6 @@ content = handle_equ_def_set(content)
 content = remove_comments(content)
 content = process_literals(content)
 content = translate_registers(content)
-print(content)
 
 with open(filename, 'w') as fw:
     fw.write(content)
