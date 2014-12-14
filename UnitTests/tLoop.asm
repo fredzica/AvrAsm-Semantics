@@ -8,9 +8,9 @@ loop:
   loop2 :
 	nop
 
-;@vreg R16, 0xFF
-;@vreg R17, 0xFF
-;@vreg R18, 0x01
+;@vmem R16, 0xFF
+;@vmem R17, 0xFF
+;@vmem R18, 0x01
 ;@vsreg 0x02 
 ;@vclk 1023 
 

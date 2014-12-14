@@ -77,6 +77,17 @@ def convert_numbers(txt, regex, base):
     
     return new_txt
 
+
+def translate_registers(txt):
+    new_txt = txt
+    ms = re.finditer(r"\b(R0|R1|R2|R3|R4|R5|R6|R7|R8|R9|R10|R11|R12|R13|R14|R15|R16|R17|R18|R19|R20|R21|R22|R23|R24|R25|R26|R27|R28|R29|R30|R31)\b", new_txt)
+
+    for m in ms:
+        new_txt = new_txt.replace(m.group(0), m.group(0)[1:], 1)
+
+    return new_txt
+
+
 filename = sys.argv[1]
 abs_path = sys.argv[2]
 
@@ -87,6 +98,8 @@ content = handle_includes(content, abs_path)
 content = handle_equ_def_set(content)
 content = remove_comments(content)
 content = process_literals(content)
+content = translate_registers(content)
+print(content)
 
 with open(filename, 'w') as fw:
     fw.write(content)

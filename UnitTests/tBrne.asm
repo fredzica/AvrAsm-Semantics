@@ -5,5 +5,5 @@ myLabel:
     cp R16, R17
     brne myLabel
 
-;@vreg R16, 0
+;@vmem R16, 0
 ;@vclk 1021

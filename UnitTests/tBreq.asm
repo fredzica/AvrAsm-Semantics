@@ -12,5 +12,5 @@ begin:
 
     end:
 
-;@vreg R16, 255
+;@vmem R16, 255
 ;@vclk 1023

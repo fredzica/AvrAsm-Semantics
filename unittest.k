@@ -3,8 +3,7 @@
 module UNIT_TEST-SYNTAX
     syntax Stmt ::= UnitTest
 
-    syntax UnitTest ::= "vreg" Reg "," Exp
-                    | "vpin" IOReg "," Exp
+    syntax UnitTest ::= "vmem" Int "," Exp
                     | "vsreg" Exp
                     | "vclk" Exp
                     | "vstack" Exp
@@ -22,11 +21,8 @@ module UNIT_TEST
 imports UNIT_TEST-SYNTAX
 imports MINT
 
-    rule <k> vreg R:Reg, V:Int => .K </k>
-        <registers>... R |-> $mi(8, V) ...</registers>
-    
-    rule <k> vpin P:IOReg, V:Int => .K </k>
-        <pins>... P |-> $mi(8, V) ...</pins>
+    rule <k> vmem A:Int, V:Int => .K </k>
+        <dataspace>... A |-> $mi(8, V) ...</dataspace>
     
     rule <k> vi V:Bool => .K </k>
         <ri> V </ri>
