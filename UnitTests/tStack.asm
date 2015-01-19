@@ -1,4 +1,7 @@
-#include "m128def.inc"
+#include "tn2313def.inc"
+
+ldi R16, RAMEND
+out SPL, R16
 
 ldi R16, 100
 push R16
@@ -22,9 +25,6 @@ pop R17
 
 pop R17
 ;@vmem R17, 100
-
-pop R16
-;@vmem R16, 0
 
 push R16
 

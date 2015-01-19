@@ -4,7 +4,7 @@ require "bits.k"
 require "unittest.k"
 
 module AVRASM-SYNTAX
-    imports UNIT_TEST-SYNTAX
+imports UNIT_TEST-SYNTAX
 
     // Assembly mnemonics that have two general purpose registers as operands
     syntax RRStmt ::= "add"
@@ -68,6 +68,13 @@ module AVRASM-SYNTAX
                     | "wdr"
                     | "break"
                     | Label ":"
+    
+    /* 
+        Below pragmas will not be implemented for now
+        #pragma AVRPART CORE INSTRUCTIONS_NOT_SUPPORTED mnemonic[ operand[,operand] ][:...]
+        #pragma AVRPART CORE NEW_INSTRUCTIONS mnemonic[ operand[,operand]][:...]
+    */
+    syntax Avrpart ::= "avrpart" K K K K K K K
 
     //TODO: Any of them should be seqstrict?
     // Constant expressions
@@ -110,7 +117,7 @@ module AVRASM-SYNTAX
     syntax Label ::= Id
     
     // The program
-    syntax Pgm ::= Stmt | Stmt Pgm
+    syntax Pgm ::= Stmt | Stmt Pgm | Avrpart Pgm
 
 endmodule
 
@@ -149,6 +156,16 @@ module AVRASM
         <T>
             <k> .K </k>
             
+            <avrpart>
+                <partname> .K </partname>
+                <coreversion> .K </coreversion>
+                <flashsize> .K </flashsize>
+                <eepromsize> .K </eepromsize>
+                <ramsize> .K </ramsize>
+                <ramstartaddress> .K </ramstartaddress>
+                <partinclude> .K </partinclude>
+            </avrpart>
+            
             <execution>            
                 <init> $PGM:Pgm </init>
                 <state> MAPPING </state>
@@ -163,11 +180,9 @@ module AVRASM
             <regdv> .K </regdv>
             <regrv> .K </regrv>
            
-            <spointer> 0 </spointer> 
-            <stack> .List </stack>
+            <spaddr> 61 </spaddr> 
             
-            <dataspace> .Map 
-            </dataspace>
+            <dataspace> .Map </dataspace>
 
             <sreg>
                 <ri> false </ri> 
@@ -183,39 +198,47 @@ module AVRASM
 
 //////////////////////////// Rules ///////////////////////////////////
     
-    /////////////// Initial line mapping /////////////////////
+    /////////////// Consume AVRPART pragmas //////////////////
 
-    // Syntax for stmt list
-    syntax IdxStmt ::= "[" Int "," Stmt "]"
+    rule <init> avrpart P V F E S SA PI Pr:Pgm => Pr </init>
+        <partname> . => P </partname>
+        <coreversion> . => V </coreversion>
+        <flashsize> . => F </flashsize>
+        <eepromsize> . => E </eepromsize>
+        <ramsize> . => S </ramsize>
+        <ramstartaddress> . => SA </ramstartaddress>
+        <partinclude> . => PI </partinclude>
+
+    /////////////// Initial line mapping /////////////////////
 
     //TODO: Find way to verify if every number in code is lesser than 256 and greater than -256 - E < 256 and E > -257
     //TODO: check if it's necessary to validate the IORegs, if it's not a problem if they're simply Int
 
     // Maps all the program's instructions. Mapping is having them inside the stmts cell and numbering them.
     rule <init> S:Stmt P:Pgm => P </init>
-        <stmts> .List => ListItem([0, S]) </stmts>
+        <stmts> .List => ListItem(S) </stmts>
 
     rule <init> S:Stmt => .K </init>
-        <stmts> .List => ListItem([0, S]) </stmts>
+        <stmts> .List => ListItem(S) </stmts>
 
     rule <init> S:Stmt P:Pgm => P </init>
-        <stmts>... ListItem([I:Int, T:Stmt]) => ListItem([I, T]) ListItem([I +Int 1, S]) </stmts>
+        <stmts> L:List => L:List ListItem(S) </stmts>
 
     rule <init> S:Stmt => .K </init>
-        <stmts>... ListItem([I:Int, T:Stmt]) => ListItem([I, T]) ListItem([I +Int 1, S]) </stmts>
+        <stmts> L:List => L:List ListItem(S) </stmts>
     
     // Find labels and put them in the labels cell
     rule <state> MAPPING </state>
         <init> .K </init>
-        <labels> Ls:Map (. => L |-> I) </labels>
-        <stmts>... ListItem([I:Int, L:Label :]) ...</stmts>
+        <labels> Ls:Map => Ls (L |-> size(Li)) </labels>
+        <stmts> Li:List ListItem(L:Label :) </stmts>
         requires notBool (L in keys(Ls))
 
     rule <state> MAPPING => ERROR </state>// prevent duplicity of labels
         <init> .K </init>
         <labels> _:Map (L:Label |-> Lm:Int) </labels>
-        <stmts>... ListItem([Ln:Int, L :]) ...</stmts>
-        requires Lm =/=Int Ln 
+        <stmts> Li:List ListItem(L :) </stmts>
+        requires Lm =/=Int size(Li)
 
     // When mapping finishes
     rule <init> .K </init>
@@ -223,17 +246,16 @@ module AVRASM
 
     ///////////////// Program execution /////////////////
 
-    // Instruction fetching
+    // Fetches an instruction - Step 0
     rule <state> RUNNING </state>
-        <k> .K => S </k>
-        <regd> RegD:Int => .K </regd>
-        <regdv> RegDV:MInt => .K </regdv>
-        <regrv> _ => .K </regrv>
+        <k> .K => Stmts[PC] </k>
+        <regd> .K </regd>
+        <regdv> .K </regdv>
+        <regrv> .K </regrv>
         <pc> PC:Int => PC +Int 1 </pc>
-        <stmts>... ListItem([PC, S:Stmt]) ...</stmts>
-        <dataspace>... RegD |-> (_ => RegDV) ...</dataspace>
+        <stmts> Stmts:List </stmts>
     
-    // Puts registers into the cells for their values to be retrieved
+    // Puts registers into the cells for their values to be retrieved - Step 1
     rule <k> _:RRStmt Rd:GReg, Rr:GReg </k>
         <regd> .K => Rd </regd>
         <regdv> .K => Rd </regdv>
@@ -260,8 +282,15 @@ module AVRASM
     rule <k> _:RStmt Rd:Int </k> 
         <regd> .K => Rd </regd>
         <regdv> .K => Rd </regdv>
-        
-    // Fetches values of the two registers TODO: join with the rule above
+
+    // Save all registers values after the execution of one instruction - Step 3
+    rule <k> .K </k>        
+        <regd> RegD:Int => .K </regd>
+        <regdv> RegDV:K => .K </regdv>
+        <regrv> _ => .K </regrv>
+        <dataspace> M:Map => M[RegD <- RegDV] </dataspace>
+
+    // Retrieves values of the two registers - Step 2 TODO: join with the rule above
     rule <regdv> R:Int => Rv </regdv>
         <dataspace>... R |-> Rv:MInt ...</dataspace>
     rule <regrv> R:Int => Rv </regrv>
@@ -273,20 +302,20 @@ module AVRASM
     // When execution ends
     rule <k> .K </k> 
         <pc> PC:Int </pc>
-        <stmts>... ListItem([I:Int, _]) </stmts>
+        <stmts> Li:List </stmts>
         <state> RUNNING => FINISHED </state>
-            requires PC ==Int (I +Int 1)
+            requires PC ==Int size(Li)
 
     /////////// Memory content assurance //////////
 
     // Int from expression will be turned into MInt
-    rule <dataspace>... _ |-> (I:Int => toByte(uvalueMInt(toByte(I)))) ...</dataspace>
+    rule <dataspace>... A:Int |-> (I:Int => toByte(uvalueMInt(toByte(I)))) ...</dataspace>
 
     // Get MInt from resolution expression
-    rule <dataspace>... _ |-> (Res:MyList => miMInt(Res)) ...</dataspace>
+    rule <dataspace>... _ |-> (Res:List => miMInt(Res)) ...</dataspace>
 
     // Ensures 8-bits numbers in registers at any point in the execution
-    rule <dataspace>... _ |-> ($mi(N:Int, I:Int) => toByte(uvalueMInt($mi(N, I)))) ...</dataspace>
+    rule <dataspace>... _ |-> (mi(N:Int, I:Int) => toByte(uvalueMInt(mi(N, I)))) ...</dataspace>
         requires I >Int 255 orBool I <Int 0
 
 
@@ -328,38 +357,38 @@ module AVRASM
     
     //ADD - add registers and place result in the first  
     rule <k> add _:GReg, _:GReg => .K </k>
-        <regdv> RdV:MInt => add(RdV, RrV)</regdv>
+        <regdv> RdV:MInt => addf(RdV, RrV)</regdv>
         <regrv> RrV:MInt </regrv>
         <rh> _ => addrh(RdV, RrV) </rh> 
         <rs> _ => addrs(RdV, RrV) </rs>   
         <rv> _ => addrv(RdV, RrV) </rv>
-        <rn> _ => rn(add(RdV, RrV)) </rn>
-        <rz> _ => zeroMInt(add(RdV, RrV)) </rz> //FIXME: maybe the overflow won't happen here?
+        <rn> _ => rn(addf(RdV, RrV)) </rn>
+        <rz> _ => zeroMInt(addf(RdV, RrV)) </rz> //FIXME: maybe the overflow won't happen here?
         <rc> _ => overflowMInt(uaddMInt(RdV, RrV)) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     // Add flags
-    syntax MInt ::= add(MInt, MInt) [function]
+    syntax MInt ::= addf(MInt, MInt) [function]
     syntax Bool ::= addrh(MInt, MInt) [function]
     syntax Bool ::= addrs(MInt, MInt) [function]
     syntax Bool ::= addrv(MInt, MInt) [function]
     syntax Bool ::= addrvimpl(Bool, Bool, Bool) [function]
     syntax Bool ::= addrhimpl(Bool, Bool, Bool) [function]
 
-    rule add(RdV:MInt, RrV:MInt) =>
+    rule addf(RdV:MInt, RrV:MInt) =>
         addMInt(RdV, RrV) [macro]
 
     // Get bools and result from MInts
     rule addrh(RdV:MInt, RrV:MInt) =>
-        addrhimpl(bit(RdV, 3), bit(RrV, 3), bit(add(RdV, RrV), 3)) [macro]
+        addrhimpl(bit(RdV, 3), bit(RrV, 3), bit(addf(RdV, RrV), 3)) [macro]
 
     // V⊕ N for signed tests
     rule addrs(RdV:MInt, RrV:MInt) =>
-        addrv(RdV, RrV) xorBool rn(add(RdV, RrV)) [macro]
+        addrv(RdV, RrV) xorBool rn(addf(RdV, RrV)) [macro]
 
     // Get bools and result from MInts
     rule addrv(RdV:MInt, RrV:MInt) =>
-        addrvimpl(bit(RdV, 7), bit(RrV, 7), bit(add(RdV, RrV), 7)) [macro]
+        addrvimpl(bit(RdV, 7), bit(RrV, 7), bit(addf(RdV, RrV), 7)) [macro]
     
     // Rd7 • Rr7 • R7 ¯ + Rd7 ¯ • Rr7 ¯ • R7 - What is the meaning of this???
     rule addrvimpl(Rd7b:Bool, Rr7b:Bool, R7b:Bool) => 
@@ -381,68 +410,68 @@ module AVRASM
 
     //SUB - subtract registers and place result in the first
     rule <k> sub _:GReg, _:GReg => .K </k>
-        <regdv> RdV:MInt => sub(RdV, RrV) </regdv>
+        <regdv> RdV:MInt => subf(RdV, RrV) </regdv>
         <regrv> RrV:MInt </regrv>
         <rh> _ => subrh(RdV, RrV) </rh> 
         <rs> _ => subrs(RdV, RrV) </rs>
         <rv> _ => subrv(RdV, RrV) </rv> 
-        <rn> _ => rn(sub(RdV, RrV)) </rn>
+        <rn> _ => rn(subf(RdV, RrV)) </rn>
         <rz> _ => eqMInt(RdV, RrV) </rz> // if result is zero
         <rc> _ => overflowMInt(usubMInt(RdV, RrV)) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //SUBI - subtract immediate
     rule <k> subi _:GReg, V:Int => .K </k>
-        <regdv> RdV:MInt => sub(RdV, toByte(V)) </regdv>
+        <regdv> RdV:MInt => subf(RdV, toByte(V)) </regdv>
         <rh> _ => subrh(RdV, toByte(V)) </rh>
         <rs> _ => subrs(RdV, toByte(V)) </rs> 
         <rv> _ => subrv(RdV, toByte(V)) </rv>
-        <rn> _ => rn(sub(RdV, toByte(V))) </rn>
-        <rz> _ => zeroMInt(sub(RdV, toByte(V))) </rz> // if result is zero
+        <rn> _ => rn(subf(RdV, toByte(V))) </rn>
+        <rz> _ => zeroMInt(subf(RdV, toByte(V))) </rz> // if result is zero
         <rc> _ => overflowMInt(usubMInt(RdV, toByte(V))) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     // Sub flags
-    syntax MInt ::= sub(MInt, MInt) [function]
+    syntax MInt ::= subf(MInt, MInt) [function]
     syntax Bool ::= subrh(MInt, MInt) [function]
     syntax Bool ::= subrs(MInt, MInt) [function]
     syntax Bool ::= subrv(MInt, MInt) [function]
 
-    rule sub(RdV:MInt, RrV:MInt) =>
+    rule subf(RdV:MInt, RrV:MInt) =>
         subMInt(RdV, RrV) [macro]
 
     // Rd3 ¯ • Rr3 + Rr3 • R3 + R3 • Rd3 ¯
     rule subrh(RdV:MInt, RrV:MInt) =>
-        addrhimpl((notBool bit(RdV, 3)), bit(RrV, 3), (notBool bit(sub(RdV, RrV), 3))) [macro]
+        addrhimpl((notBool bit(RdV, 3)), bit(RrV, 3), (notBool bit(subf(RdV, RrV), 3))) [macro]
 
     // N ⊕ V
     rule subrs(RdV:MInt, RrV:MInt) =>
-        rn(sub(RdV, RrV)) xorBool subrv(RdV, RrV) [macro]
+        rn(subf(RdV, RrV)) xorBool subrv(RdV, RrV) [macro]
 
     // Rd7 • Rr7 ¯ • R7 ¯ + Rd7 ¯ • Rr7 • R7
     rule subrv(RdV:MInt, RrV:MInt) => 
-        addrvimpl(bit(RdV, 7), (notBool bit(RrV, 7)), bit(sub(RdV, RrV), 7)) [macro]
+        addrvimpl(bit(RdV, 7), (notBool bit(RrV, 7)), bit(subf(RdV, RrV), 7)) [macro]
 
     //INC - increment
     rule <k> inc _:GReg => .K </k>
-        <regdv> RdV:MInt => inc(RdV) </regdv>
+        <regdv> RdV:MInt => incf(RdV) </regdv>
         <rs> _ => incrs(RdV) </rs> 
         <rv> _ => incrv(RdV) </rv> 
-        <rn> _ => rn(inc(RdV)) </rn>
-        <rz> _ => zeroMInt(inc(RdV)) </rz>
+        <rn> _ => rn(incf(RdV)) </rn>
+        <rz> _ => zeroMInt(incf(RdV)) </rz>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     // Inc auxiliary functions
-    syntax MInt ::= inc(MInt) [function]
+    syntax MInt ::= incf(MInt) [function]
     syntax Bool ::= incrs(MInt) [function]
     syntax Bool ::= incrv(MInt) [function]
 
-    rule inc(RdV:MInt) =>
-        add(RdV, toByte(1)) [macro]
+    rule incf(RdV:MInt) =>
+        addf(RdV, toByte(1)) [macro]
 
     // N ⊕ V
     rule incrs(RdV:MInt) =>
-        rn(inc(RdV)) xorBool incrv(RdV) [macro]
+        rn(incf(RdV)) xorBool incrv(RdV) [macro]
 
     // R7 • R6 ¯ • R5 ¯ • R4 ¯ • R3 ¯ • R2 ¯ • R1 ¯ • R0 ¯
     rule incrv(RdV:MInt) =>
@@ -450,24 +479,24 @@ module AVRASM
 
     //DEC - decrement
     rule <k> dec _:GReg => .K </k>
-        <regdv>... RdV:MInt => dec(RdV) ...</regdv>
+        <regdv>... RdV:MInt => decf(RdV) ...</regdv>
         <rs> _ => decrs(RdV) </rs> 
         <rv> _ => decrv(RdV) </rv> 
-        <rn> _ => rn(dec(RdV)) </rn>
-        <rz> _ => zeroMInt(dec(RdV)) </rz>
+        <rn> _ => rn(decf(RdV)) </rn>
+        <rz> _ => zeroMInt(decf(RdV)) </rz>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
     
     // Dec flags
-    syntax MInt ::= dec(MInt) [function]
+    syntax MInt ::= decf(MInt) [function]
     syntax Bool ::= decrs(MInt) [function]
     syntax Bool ::= decrv(MInt) [function]
 
-    rule dec(RdV:MInt) =>
-        sub(RdV, toByte(1)) [macro]
+    rule decf(RdV:MInt) =>
+        subf(RdV, toByte(1)) [macro]
 
     // N ⊕ V
     rule decrs(RdV:MInt) =>
-        rn(dec(RdV)) xorBool decrv(RdV) [macro]
+        rn(decf(RdV)) xorBool decrv(RdV) [macro]
 
     // R7 ¯ • R6 • R5 • R4 • R3 • R2 • R1 • R0
     rule decrv(RdV:MInt) =>
@@ -475,18 +504,18 @@ module AVRASM
 
     //EOR - exclusive or
     rule <k> eor _:GReg, _:GReg => .K </k>
-        <regdv> RdV:MInt => eor(RdV, RrV) </regdv>
+        <regdv> RdV:MInt => eorf(RdV, RrV) </regdv>
         <regrv> RrV:MInt </regrv>
-        <rs> _ => rn(eor(RdV, RrV)) xorBool false </rs> // N ⊕ V
+        <rs> _ => rn(eorf(RdV, RrV)) xorBool false </rs> // N ⊕ V
         <rv> _ => false </rv>
-        <rn> _ => rn(eor(RdV, RrV)) </rn>
-        <rz> _ => zeroMInt(eor(RdV, RrV)) </rz>
+        <rn> _ => rn(eorf(RdV, RrV)) </rn>
+        <rz> _ => zeroMInt(eorf(RdV, RrV)) </rz>
         <clockcycle> C:Int => C +Int 1 </clockcycle> 
    
     // Eor
-    syntax MInt ::= eor(MInt, MInt) [function]
+    syntax MInt ::= eorf(MInt, MInt) [function]
    
-    rule eor(RdV:MInt, RrV:MInt) =>
+    rule eorf(RdV:MInt, RrV:MInt) =>
        xorMInt(RdV, RrV) [macro]
 
     // CLR - Clear register. As it is a rewrite to EOR, the same flags modified in EOR will be modified here.
@@ -504,7 +533,7 @@ module AVRASM
         <rh> _ => subrh(RdV, RrV) </rh> 
         <rs> _ => subrs(RdV, RrV) </rs>
         <rv> _ => subrv(RdV, RrV) </rv> 
-        <rn> _ => rn(sub(RdV, RrV)) </rn>
+        <rn> _ => rn(subf(RdV, RrV)) </rn>
         <rz> _ => zeroMInt(subMInt(RdV, RrV)) </rz> // if result is zero
         <rc> _ => ultMInt(RdV, RrV) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle> 
@@ -547,7 +576,7 @@ module AVRASM
 
     //LDI - load immediate
     rule <k> ldi _:GReg, V:Int => .K </k> 
-        <regdv> _ => V </regdv>
+        <regdv> _ => toByte(V) </regdv>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
    
     //IN - read input into register
@@ -562,48 +591,44 @@ module AVRASM
         <regrv> RrV:MInt </regrv>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
-    //PUSH - stores register value on the stack
+    //PUSH - stores register value on the stack 
+    //TODO: handle overflows in RAM boundaries
     rule <k> push _:GReg => . </k>
-        <spointer> SP:Int => SP -Int 1 </spointer>
-        <stack>... . => ListItem(Rv) </stack>
-        <regdv> Rv:MInt => . </regdv>
+        <spaddr> SPA:Int </spaddr>
+        <dataspace> M:Map (SPA |-> MI:MInt) => M ((uvalueMInt(MI) |-> Rv) (SPA |-> decf(MI))) </dataspace>
+        <regdv> Rv:MInt </regdv>
         <clockcycle> C:Int => C +Int 2 </clockcycle>
   
     //POP - loads register with byte from the stack
+    // TODO: handle overflows in RAM boundaries
     rule <k> pop _:GReg => . </k>
-        <spointer> SP:Int => SP +Int 1 </spointer>
-        <stack>... ListItem(I:MInt) => .  </stack>
-        <regdv> _ => I </regdv>
-        <clockcycle> C:Int => C +Int 2 </clockcycle>
- 
-    rule <k> pop _:GReg => . </k>
-        <spointer> SP:Int => SP +Int 1 </spointer>
-        <stack> .List </stack>
-        <regdv> _ => toByte(0) </regdv>
+        <spaddr> SPA:Int </spaddr>
+        <dataspace> M:Map (SPA |-> MI:MInt) (uvalueMInt(incf(MI)) |-> PV:MInt) => M (SPA |-> incf(MI)) (uvalueMInt(incf(MI)) |-> PV:MInt) </dataspace>
+        <regdv> _ => PV </regdv>
         <clockcycle> C:Int => C +Int 2 </clockcycle>
  
     ///////// Bit and Bit-test instructions /////////
 
     //ROR - rotate right through carry
     rule <k> ror _:GReg => .K </k>
-        <regdv> Rdv:MInt => ror(Rdv, Cv) </regdv>
-        <rs> _ => rn(ror(Rdv, Cv)) xorBool rorrv(Rdv, Cv) </rs> //N ⊕ V
+        <regdv> Rdv:MInt => rorf(Rdv, Cv) </regdv>
+        <rs> _ => rn(rorf(Rdv, Cv)) xorBool rorrv(Rdv, Cv) </rs> //N ⊕ V
         <rv> _ => rorrv(Rdv, Cv) </rv> //N ⊕ C
-        <rn> _ => rn(ror(Rdv, Cv)) </rn>
-        <rz> _ => zeroMInt(ror(Rdv, Cv)) </rz>
+        <rn> _ => rn(rorf(Rdv, Cv)) </rn>
+        <rz> _ => zeroMInt(rorf(Rdv, Cv)) </rz>
         <rc> Cv:Bool => rorrc(Rdv) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     // ROR auxiliary functions
-    syntax MInt ::= ror(MInt, Bool) [function]
+    syntax MInt ::= rorf(MInt, Bool) [function]
     syntax Bool ::= rorrv(MInt, Bool) [function]
     syntax Bool ::= rorrc(MInt) [function]
 
-    rule ror(Rdv:MInt, Cv:Bool) => 
+    rule rorf(Rdv:MInt, Cv:Bool) => 
         orMInt(shlMInt(BooltoMInt(Cv), 7), ashrMInt(Rdv, 1)) [macro]
 
     rule rorrv(Rdv:MInt, Cv:Bool) => 
-        rn(ror(Rdv, Cv)) xorBool rorrc(Rdv) [macro]
+        rn(rorf(Rdv, Cv)) xorBool rorrc(Rdv) [macro]
 
     rule rorrc(Rdv:MInt) => 
         bit(Rdv, 0) [macro]
@@ -611,23 +636,23 @@ module AVRASM
 
     //ASR - arithmetic shift right
     rule <k> asr _:GReg => .K </k>
-        <regdv> RdV:MInt => asr(RdV) </regdv>
-        <rs> _ => rn(asr(RdV)) xorBool asrrv(RdV) </rs>//N ⊕ V
+        <regdv> RdV:MInt => asrf(RdV) </regdv>
+        <rs> _ => rn(asrf(RdV)) xorBool asrrv(RdV) </rs>//N ⊕ V
         <rv> _ => asrrv(RdV) </rv> //N ⊕ C
-        <rn> _ => rn(asr(RdV)) </rn>
-        <rz> _ => zeroMInt(asr(RdV)) </rz>
+        <rn> _ => rn(asrf(RdV)) </rn>
+        <rz> _ => zeroMInt(asrf(RdV)) </rz>
         <rc> _ => rorrc(RdV) </rc>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     //ASR auxiliary functions
-    syntax MInt ::= asr(MInt) [function]
+    syntax MInt ::= asrf(MInt) [function]
     syntax Bool ::= asrrv(MInt) [function]
 
-    rule asr(RdV:MInt) => 
+    rule asrf(RdV:MInt) => 
         sshrMInt(RdV, 1) [macro]
 
     rule asrrv(RdV:MInt) =>
-        rn(asr(RdV)) xorBool rorrc(RdV) [macro]
+        rn(asrf(RdV)) xorBool rorrc(RdV) [macro]
         
 
     //SWAP - swap nibbles
@@ -687,12 +712,12 @@ module AVRASM
         
     //SBI P,b - set bit in I/O register
     rule <k> sbi _:LowIOReg, B:Int => .K </k>
-        <regdv> Iorv:MInt => set(Iorv, B) </regdv>
+        <regdv> Iorv:MInt => setf(Iorv, B) </regdv>
         <clockcycle> C:Int => C +Int 2 </clockcycle>
 
     //CBI P,b - clear bit in I/O register
     rule <k> cbi _:LowIOReg, B:Int => .K </k>
-        <regdv> Iorv:MInt => clr(Iorv, B) </regdv>
+        <regdv> Iorv:MInt => clrf(Iorv, B) </regdv>
         <clockcycle> C:Int => C +Int 2 </clockcycle>
 
     //BST Rr,b - bit store from register to T
@@ -703,12 +728,12 @@ module AVRASM
 
     //BLD Rd,b - Bit load from register to T
     rule <k> bld _:GReg, B:Int => .K </k>
-        <regdv> Rdv:MInt => set(Rdv, B) </regdv>
+        <regdv> Rdv:MInt => setf(Rdv, B) </regdv>
         <rt> true </rt>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 
     rule <k> bld _:GReg, B:Int => .K </k>
-        <regdv> Rdv:MInt => clr(Rdv, B) </regdv>
+        <regdv> Rdv:MInt => clrf(Rdv, B) </regdv>
         <rt> false </rt>
         <clockcycle> C:Int => C +Int 1 </clockcycle>
 

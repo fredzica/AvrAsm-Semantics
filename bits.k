@@ -7,17 +7,17 @@ imports MINT
 
     // ToByte
     syntax MInt ::= toByte(Int) [function]
-    rule toByte(I:Int) => $mi(8, I) [macro]
-    
+    rule toByte(I:Int) => mi(8, I) [macro]
+
     // Bool from MInt
     syntax Bool ::= bit(MInt, Int) [function]
     rule bit(M:MInt, B:Int) => neMInt(andMInt(M, toByte(1 <<Int B)), toByte(0))
 
     // Modify bit from MInt
-    syntax MInt ::= set(MInt, Int) [function] 
-    syntax MInt ::= clr(MInt, Int) [function]
-    rule set(M:MInt, B:Int) => orMInt(M, toByte(1 <<Int B))
-    rule clr(M:MInt, B:Int) => andMInt(M, toByte(~Int (1 <<Int B)))
+    syntax MInt ::= setf(MInt, Int) [function] 
+    syntax MInt ::= clrf(MInt, Int) [function]
+    rule setf(M:MInt, B:Int) => orMInt(M, toByte(1 <<Int B))
+    rule clrf(M:MInt, B:Int) => andMInt(M, toByte(~Int (1 <<Int B)))
 
     syntax Int ::= BooltoInt(Bool) [function]
     rule BooltoInt(false) => 0

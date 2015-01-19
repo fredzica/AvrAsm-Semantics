@@ -29,6 +29,16 @@ def handle_includes(content, abs_path):
 
     return new_content
 
+#FIXME: this is an incorrect implementation
+def handle_ifndef_define(txt):
+    new_txt = re.sub(r"#ifndef.*", "", txt)
+    new_txt = re.sub(r"#define.*", "", new_txt)
+    new_txt = re.sub(r"#endif.*", "", new_txt)
+
+    new_txt = re.sub(r"\.device.*", "", new_txt)
+    
+    return new_txt
+
 #FIXME: Def and set can be redefined later in the file. This behaviour won't work
 def handle_equ_def_set(txt):
     regex_p = r"\.(equ|def|set)\s*(.+?)\s*=\s*(.+?)(\s+|$)"
@@ -87,6 +97,26 @@ def translate_registers(txt):
 
     return new_txt
 
+def adjust_pragmas(txt):
+    #find each value
+    part_name = re.search(r"#pragma AVRPART ADMIN PART_NAME (.*)", txt)
+    core_version = re.search(r"#pragma AVRPART CORE CORE_VERSION (.*)", txt)
+    prog_flash = re.search(r"#pragma AVRPART MEMORY PROG_FLASH (.*)", txt)
+    eeprom = re.search(r"#pragma AVRPART MEMORY EEPROM (.*)", txt)
+    sram_size = re.search(r"#pragma AVRPART MEMORY INT_SRAM SIZE (.*)", txt)
+    sram_start_addr = re.search(r"#pragma AVRPART MEMORY INT_SRAM START_ADDR (.*)", txt)
+    partinc = re.search(r"#pragma partinc (.*)", txt)
+    
+    #remove all the pragmas
+    new_txt = re.sub(r"#pragma AVRPART .*", "", txt)
+    new_txt = re.sub(r"#pragma partinc .*", "", new_txt)
+
+    #create the AVRPART string
+    new_txt = "avrpart {} {} {} {} {} {} {} ".format(part_name.group(1), core_version.group(1), prog_flash.group(1), eeprom.group(1), sram_size.group(1), sram_start_addr.group(1), partinc.group(1)).lower() + new_txt
+
+    return new_txt
+
+
 
 filename = sys.argv[1]
 abs_path = sys.argv[2]
@@ -95,10 +125,14 @@ with open(filename, 'r') as fr:
     content = fr.read()
 
 content = handle_includes(content, abs_path)
+content = handle_ifndef_define(content)
 content = handle_equ_def_set(content)
 content = remove_comments(content)
 content = process_literals(content)
 content = translate_registers(content)
+content = handle_ifndef_define(content)
+content = adjust_pragmas(content)
+
 
 with open(filename, 'w') as fw:
     fw.write(content)

@@ -1,12 +1,13 @@
 // Copyright (c) 2014 Frederico Zica. All Rights Reserved.
 
 module UNIT_TEST-SYNTAX
+
     syntax Stmt ::= UnitTest
 
-    syntax UnitTest ::= "vmem" Int "," Exp
-                    | "vsreg" Exp
-                    | "vclk" Exp
-                    | "vstack" Exp
+    syntax UnitTest ::= "vmem" Int "," Int
+                    | "vsreg" Int
+                    | "vclk" Int
+                    | "vstack" Int
                     | "vi" Bool
                     | "vt" Bool
                     | "vh" Bool
@@ -20,9 +21,10 @@ endmodule
 module UNIT_TEST
 imports UNIT_TEST-SYNTAX
 imports MINT
+imports BITS
 
     rule <k> vmem A:Int, V:Int => .K </k>
-        <dataspace>... A |-> $mi(8, V) ...</dataspace>
+        <dataspace>... A |-> mi(8, V) ...</dataspace>
     
     rule <k> vi V:Bool => .K </k>
         <ri> V </ri>
@@ -63,7 +65,8 @@ imports MINT
         <clockcycle> Clk </clockcycle>
     
     rule <k> vstack E:Int => .K </k>
-        <stack>... ListItem($mi(8, E)) </stack>
+        <spaddr> SPA:Int </spaddr>
+        <dataspace> M:Map (SPA |-> MI:MInt) (uvalueMInt(addMInt(MI, toByte(1))) |-> toByte(E)) </dataspace>
 
     syntax Int ::= Boolasbin(Bool, Int) [function]
     rule Boolasbin(false, _) => 0

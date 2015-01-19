@@ -2,8 +2,8 @@ This is an implementation of the semantics of Atmel's Avr Assembly language for 
 
 Much of the microcontrollers' behaviour is being defined too, as it's necessary to have it in order to have an ambient for the assembly language to execute.
 
-This is an work in progress started not long ago. Because of this not many features of the language are defined yet.
+This is an work in progress.
 
----- Currently working on release v3.4 of K Framework with mint-custom.k file instead of original mint.k file. Please replace it on the builtins folder----
+---- Currently working on release nightly release from 14 January. Trying to cope with the use of the Java backend of K ----
 
 Frederico Zica

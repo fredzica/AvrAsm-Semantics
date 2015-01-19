@@ -1,3 +1,5 @@
+#include "tn2313def.inc"
+
 ldi R16, -128
 ldi R19, -127
 add R16, R19
